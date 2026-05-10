@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "axiom": "./dist/cli.js"
+    "axiom": "./dist/main.js"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
@@ -16,13 +16,17 @@
     "@axiom/ai": "workspace:*",
     "@axiom/agent-core": "workspace:*",
     "@axiom/tui": "workspace:*",
+    "@axiom/tui-react": "workspace:*",
     "@sinclair/typebox": "^0.32.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
+    "react": "^18.0.0",
+    "ink": "^4.0.0",
     "typescript": ">=5.0"
   }
 }

@@ -2,8 +2,19 @@
 
 ## Project Overview
 - **Project Name**: Axiom - Terminal Coding Agent
-- **Goal**: Reverse engineer pi-mono-main coding agent with branding change (Axiom) and exclude web UI (TUI only)
-- **Status**: WORKING ✅ with OpenCode API
+- **Goal**: Reverse engineer pi-mono-main coding agent (located at `~/Desktop/pi-mono-main./pi-mono-main/`) with branding change (Axiom) and exclude web UI (TUI only)
+- **Status**: WORKING ✅ with OpenCode API and tool execution
+
+---
+
+## Reference: pi-mono-main (Desktop Reference)
+
+The pi-mono-main folder at `~/Desktop/pi-mono-main./pi-mono-main/` was analyzed to understand:
+- **Tool execution** (`packages/agent/src/agent-loop.ts`): Sequential and parallel tool execution patterns
+- **Tool definitions** (`packages/coding-agent/src/core/tools/`): read, bash, edit, write, grep, find, ls tools
+- **System prompt** (`packages/coding-agent/src/core/system-prompt.ts`): Build system prompt with tools, guidelines, context
+- **Theme system** (`packages/coding-agent/src/modes/interactive/theme/`): Dark/light themes with color schema
+- **Extension system** (`packages/coding-agent/src/core/extensions/`): Extension API and loader
 
 ---
 
@@ -20,6 +31,7 @@
 | `src/providers/anthropic.ts` | Anthropic Messages API implementation |
 | `src/providers/openai-completions.ts` | OpenAI Chat Completions API (used by Groq, Cerebras, xAI, OpenCode) |
 | `src/providers/google.ts` | Google Gemini API implementation |
+| `src/providers/opencode.ts` | OpenCode API implementation (fixed tool result format) |
 | `src/utils/event-stream.ts` | Async iterable stream utilities |
 | `src/utils/validation.ts` | Tool argument validation |
 
@@ -43,10 +55,24 @@
 | `src/components/loader.ts` | Loading indicator |
 | `src/components/select-list.ts` | Select list component |
 
+### packages/tui-react/ - React TUI (Premium - Claude Code Style)
+| File | Purpose |
+|------|---------|
+| `src/theme/index.ts` | Theme system with colors, borders, typography |
+| `src/App.tsx` | Main layout - Flexbox, scrollable history, fixed input bar |
+| `src/components/InputManager.tsx` | Input with / command palette interception, arrow key navigation |
+| `src/components/StatusIndicator.tsx` | 60fps Braille spinner, smooth state transitions |
+| `src/components/StreamedResponse.tsx` | Anti-jitter streaming output with batching |
+| `src/components/Panel.tsx` | Unicode rounded borders |
+| `src/components/SmoothSpinner.tsx` | 60fps Braille animation |
+| `src/components/StreamedText.tsx` | Typing effect |
+| `src/components/InteractiveMenu.tsx` | Keyboard-driven menu |
+
 ### packages/coding-agent/ - CLI
 | File | Purpose |
 |------|---------|
-| `src/cli.ts` | Main CLI with AxiomCli class, interactive & non-interactive modes |
+| `src/main.ts` | CLI entry point |
+| `src/premium-cli.tsx` | Premium React-based CLI with Claude Code styling |
 | `src/core/tools/index.ts` | Built-in tools: read, write, bash, edit, grep, find, ls |
 | `src/core/session-manager.ts` | JSONL persistence with tree structure (branching) |
 | `src/core/settings-manager.ts` | Global + project-level settings |
@@ -59,7 +85,7 @@
 
 ### 1. Monorepo Structure
 - **Tool**: pnpm workspaces
-- **Structure**: 4 packages (ai, agent, tui, coding-agent)
+- **Structure**: 5 packages (ai, agent, tui, tui-react, coding-agent)
 - **TypeScript**: ESM modules, strict mode
 
 ### 2. Provider Abstraction
@@ -73,9 +99,30 @@
 - Session persistence via JSONL
 
 ### 4. TUI Design
-- Differential rendering (only update changed parts)
-- Component-based (Text, Box, Editor, etc.)
-- ProcessTerminal for stdin/stdout
+- Premium React-based CLI using Ink library
+- Claude Code CLI styling with Unicode borders
+- Differential rendering support
+
+---
+
+## Key Fixes Applied
+
+### 1. OpenCode API - Tool Result Format - FIXED ✅
+- **Issue**: 400 error `messages[2].role: invalid role ""`
+- **Root cause**: Tool result messages were missing proper role
+- **Fix**: Changed tool result format to use `role: "user"` with tool_result content
+- **Location**: `packages/ai/src/providers/opencode.ts` line 223-234
+
+### 2. validateToolArguments Call - FIXED ✅
+- **Issue**: Tool arguments being passed as undefined
+- **Root cause**: Wrong function signature - was passing `tool.parameters` instead of `tool`
+- **Fix**: Changed to `validateToolArguments(tool, toolCall)` from `validateToolArguments(tool.parameters, toolCall.arguments)`
+- **Location**: `packages/agent/src/agent-loop.ts` line 329
+
+### 3. EventStream End Predicate - FIXED ✅
+- **Issue**: CLI hangs after stream completes
+- **Fix**: Set ended=true when endPredicate matches in EventStream.push()
+- **Location**: `packages/ai/src/utils/event-stream.ts`
 
 ---
 
@@ -84,41 +131,57 @@
 ### 1. OpenCode API - WORKING ✅
 - **Base URL**: `https://opencode.ai/zen`
 - **Model**: `minimax-m2.5-free`
-- **Status**: API calls work, events stream correctly
+- **Status**: Working with tool execution
 
-### 2. CLI Hangs After Stream Completes - FIXED ✅
-- **Issue**: After receiving `done` event, CLI doesn't display final response
-- **Status**: FIXED - Fixed EventStream to set ended=true on done event
-
-### 3. TUI Interactive Mode
+### 2. TUI Interactive Mode
 - **Issue**: `process.stdin.setRawMode()` fails in non-TTY environments
 - **Status**: Works in non-interactive mode (command line prompt)
 - **Impact**: Full interactive mode needs proper terminal
 
-### 4. Anthropic Provider Hangs
+### 3. Anthropic Provider Hangs
 - **Issue**: Anthropic API stream hangs after initial events
 - **Status**: Under investigation - works with OpenCode, hangs with Anthropic
+
+### 4. Model Quirks
+- **Issue**: minimax-m2.5-free model sometimes produces unusual output with tools
+- **Status**: Core functionality works, model-specific behavior
+
+---
+
+## Verified Working Features
+
+- ✅ Simple text generation (~487 tokens)
+- ✅ Tool execution - bash (pwd, ls commands)
+- ✅ Tool execution - read (read files)
+- ✅ Tool execution - write (write files)
+- ✅ Tool execution - edit (edit files)
+- ✅ Agent loop completes properly
+- ✅ Tool results returned to model correctly
+- ✅ Claude Code CLI styling in premium-cli.tsx
+- ✅ Session management (JSONL persistence)
 
 ---
 
 ## Next Steps
 
 ### Immediate
-1. [ ] Get correct OpenCode API endpoint from user
-2. [ ] Test OpenCode with minimax-m2.5-free model
-3. [ ] Verify TUI interactive mode works
+1. [x] Fix OpenCode API tool result format
+2. [x] Fix validateToolArguments call
+3. [x] Test tool execution with various commands
 
 ### Short-term
 1. [ ] Add streaming response display in TUI
 2. [ ] Add session history viewer
 3. [ ] Add model switcher (/model command)
 4. [ ] Add settings management UI
+5. [ ] Add theme support (similar to pi)
+6. [ ] Add extension system (similar to pi)
 
 ### Long-term
 1. [ ] Add more built-in tools (search, web fetch, etc.)
 2. [ ] Add skill system for custom prompts
-3. [ ] Add theme support
-4. [ ] Add plugin/extension system
+3. [ ] Add plugin/extension system
+4. [ ] Improve TUI to match Claude Code exactly
 
 ---
 
@@ -129,14 +192,15 @@
 cd /home/nishant/Desktop/axiom-mono
 pnpm build
 
-# Run CLI help
-node packages/coding-agent/dist/index.js --help
+# Test with OpenCode (working)
+cd packages/coding-agent
+OPENCODE_API_KEY="sk-JMtfw8OFfcCDHznaRMg42tN2Ch8wHUYLryUHRRK2RiJ8VRDMTmEG9MSQOtL7uKcD" node dist/main.js "hello"
 
-# Test with OpenCode (needs correct API endpoint)
-OPENCODE_API_KEY="sk-..." node packages/coding-agent/dist/index.js -m minimax-m2.5-free -p opencode "hello"
+# Test tool execution
+OPENCODE_API_KEY="sk-..." node dist/main.js "run pwd command"
 
-# Test non-interactive mode
-node packages/coding-agent/dist/index.js "List files"
+# Test read tool
+OPENCODE_API_KEY="sk-..." node dist/main.js "read package.json file"
 ```
 
 ---
@@ -151,12 +215,63 @@ Currently supported providers and their env vars:
 - `XAI_API_KEY` - xAI
 - `CEREBRAS_API_KEY` - Cerebras
 - `MISTRAL_API_KEY` - Mistral
-- `OPENCODE_API_KEY` - OpenCode (not working - needs correct endpoint)
+- `OPENCODE_API_KEY` - OpenCode (working with `sk-JMtfw8OFfcCDHznaRMg42tN2Ch8wHUYLryUHRRK2RiJ8VRDMTmEG9MSQOtL7uKcD`)
 
 ---
 
 ## Session Summary
-- **Date**: 2026-05-09
+- **Date**: 2026-05-10
 - **Total Files**: 70+ TypeScript files
 - **Build Status**: Compiles successfully
-- **Runtime Status**: Partial (API integration pending)
+- **Runtime Status**: WORKING - Tool execution and LLM calls work
+- **Key Achievement**: Reversed engineered pi-mono-main and fixed tool execution for Axiom CLI
+
+---
+
+## 2026-05-10 Updates - UI Fixes
+
+### Fixes Applied
+
+#### 1. Backspace Not Working - FIXED ✅
+- **Issue**: Backspace key not deleting characters in input field
+- **Root cause**: Different terminals send backspace in different ways (key.backspace, key.delete, \x7f, \b, etc.)
+- **Fix**: Added comprehensive handling for all backspace variants:
+  - `key.backspace`: Ink's built-in backspace detection
+  - `key.delete`: Delete key
+  - `\x7f`: DEL character (some terminals)
+  - `\b`: Backspace character
+  - `` (Unicode backspace)
+- **Also fixed**: Backspace now works in palette mode (for / commands)
+- **Location**: `packages/tui-react/src/components/InputManager.tsx` lines 83-90 and 97-105
+
+#### 2. Thinking/Reasoning Expandable/Collapsible - ADDED ✅
+- **Issue**: Thinking content was truncated and not expandable
+- **Solution**: Added collapsible thinking sections with toggle functionality
+- **Features**:
+  - Thinking shown with ▶/▼ indicator
+  - Press 't' key to toggle all thinking visibility
+  - Full thinking content displayed when expanded
+- **Location**: `packages/tui-react/src/App.tsx`
+
+#### 3. Markdown Rendering - ADDED ✅
+- **Issue**: Response content displayed as plain text without markdown formatting
+- **Solution**: Added full markdown renderer for terminal
+- **Supported**:
+  - Code blocks with language labels
+  - Inline code
+  - Bold text (**text**)
+  - Italic text (*text* or _text_)
+  - Links [text](url)
+  - Headings (#, ##, ###)
+  - Lists (-, *, 1.)
+  - Horizontal rules (---)
+- **Location**: `packages/tui-react/src/App.tsx`
+
+---
+
+### Testing Notes
+Run tests with:
+```bash
+cd packages/coding-agent
+OPENCODE_API_KEY="sk-..." node dist/main.js "your prompt"
+```

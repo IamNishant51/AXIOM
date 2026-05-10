@@ -36,16 +36,33 @@ async function runOpenCodeStream(model, context, options, apiKey, eventStream) {
         messages: opencodeMessages,
         system: systemPrompt,
     };
-    // Make request
-    const response = await fetch(`${model.baseUrl}/v1/messages`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify(requestBody),
-    });
+    // Add tools if present
+    if (context.tools && context.tools.length > 0) {
+        requestBody.tools = context.tools.map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            input_schema: tool.parameters,
+        }));
+    }
+    // Make request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    let response;
+    try {
+        response = await fetch(`${model.baseUrl}/v1/messages`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+        });
+    }
+    finally {
+        clearTimeout(timeoutId);
+    }
     if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`OpenCode API error: ${response.status} - ${errorText}`);
@@ -150,10 +167,16 @@ function transformToOpenCode(messages) {
             return { role: "assistant", content };
         }
         if (msg.role === "toolResult") {
+            // Tool results should be sent as user messages with tool_result content
             return {
-                type: "tool_result",
-                tool_use_id: msg.toolCallId,
-                content: msg.content[0]?.text || "",
+                role: "user",
+                content: [
+                    {
+                        type: "tool_result",
+                        tool_use_id: msg.toolCallId,
+                        content: msg.content[0]?.text || "",
+                    },
+                ],
             };
         }
         return null;

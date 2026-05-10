@@ -1,0 +1,204 @@
+/**
+ * InteractiveMenu Component - Premium keyboard-driven menu
+ * Handles up/down/enter smoothly with cursor and dimmed inactive options
+ */
+
+import React, { useState, useEffect, useCallback } from "react";
+import { Text, Box } from "ink";
+import { useTheme } from "../theme/index.js";
+
+export interface MenuItem {
+  label: string;
+  value?: string;
+  description?: string;
+  disabled?: boolean;
+  action?: () => void;
+}
+
+export interface InteractiveMenuProps {
+  items: MenuItem[];
+  onSelect: (item: MenuItem, index: number) => void;
+  onCancel?: () => void;
+  defaultIndex?: number;
+  showCursor?: boolean;
+  dimInactive?: boolean;
+  pageSize?: number;
+}
+
+export const InteractiveMenu: React.FC<InteractiveMenuProps> = ({
+  items,
+  onSelect,
+  onCancel,
+  defaultIndex = 0,
+  showCursor = true,
+  dimInactive = true,
+  pageSize = 10,
+}) => {
+  const theme = useTheme();
+  const [selectedIndex, setSelectedIndex] = useState(defaultIndex);
+
+  // Filter out disabled items for navigation
+  const enabledItems = items.filter((item) => !item.disabled);
+  const enabledIndices = items.map((item, index) =>
+    item.disabled ? -1 : enabledItems.findIndex((ei) => ei === item)
+  );
+
+  // Reset selection if it becomes disabled
+  useEffect(() => {
+    if (items[selectedIndex]?.disabled) {
+      const nextEnabled = items.findIndex((item) => !item.disabled);
+      if (nextEnabled >= 0) setSelectedIndex(nextEnabled);
+    }
+  }, [items, selectedIndex]);
+
+  const currentItem = items[selectedIndex];
+
+  // Handle keyboard input
+  const handleKeyPress = useCallback(
+    (key: string) => {
+      switch (key) {
+        case "up":
+        case "k":
+        case "w":
+          // Move up
+          do {
+            setSelectedIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1));
+          } while (items[selectedIndex]?.disabled && selectedIndex !== 0);
+          break;
+
+        case "down":
+        case "j":
+        case "s":
+          // Move down
+          do {
+            setSelectedIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0));
+          } while (items[selectedIndex]?.disabled && selectedIndex !== items.length - 1);
+          break;
+
+        case "return":
+        case "enter":
+          // Select current item
+          if (currentItem && !currentItem.disabled) {
+            currentItem.action?.();
+            onSelect(currentItem, selectedIndex);
+          }
+          break;
+
+        case "escape":
+        case "q":
+          onCancel?.();
+          break;
+
+        default:
+          // Number key quick selection (1-9)
+          const num = parseInt(key);
+          if (num >= 1 && num <= Math.min(9, items.length)) {
+            const index = num - 1;
+            if (!items[index].disabled) {
+              setSelectedIndex(index);
+              onSelect(items[index], index);
+            }
+          }
+          break;
+      }
+    },
+    [items, selectedIndex, currentItem, onSelect, onCancel]
+  );
+
+  // Expose key handler for parent component
+  useEffect(() => {
+    // This component expects parent to handle stdin input
+    // In practice, you'd wrap this in a useInput handler from Ink
+  }, []);
+
+  // Render menu items
+  const renderItems = () => {
+    // Calculate visible range for pagination
+    const totalPages = Math.ceil(items.length / pageSize);
+    const currentPage = Math.floor(selectedIndex / pageSize);
+    const startIndex = currentPage * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, items.length);
+
+    return items.slice(startIndex, endIndex).map((item, index) => {
+      const actualIndex = startIndex + index;
+      const isSelected = actualIndex === selectedIndex;
+      const isDisabled = item.disabled;
+
+      return (
+        <Box key={actualIndex} flexDirection="row" paddingY={0}>
+          {/* Cursor */}
+          <Box width={2}>
+            {showCursor && isSelected && !isDisabled && (
+              <Text bold color={theme.colors.cursor}>
+                {theme.typography.cursor}{" "}
+              </Text>
+            )}
+            {showCursor && isSelected && isDisabled && (
+              <Text color={theme.colors.textMuted}>  </Text>
+            )}
+            {!isSelected && <Text>  </Text>}
+          </Box>
+
+          {/* Label */}
+          <Box flexGrow={1}>
+            <Text
+              bold={isSelected && !isDisabled}
+              color={
+                isDisabled
+                  ? theme.colors.textMuted
+                  : isSelected
+                  ? theme.colors.text
+                  : dimInactive
+                  ? theme.colors.textDim
+                  : theme.colors.text
+              }
+            >
+              {item.label}
+            </Text>
+          </Box>
+
+          {/* Description */}
+          {item.description && (
+            <Box width={30}>
+              <Text color={theme.colors.textMuted}> {item.description}</Text>
+            </Box>
+          )}
+        </Box>
+      );
+    });
+  };
+
+  return (
+    <Box flexDirection="column">
+      {renderItems()}
+
+      {/* Navigation hint */}
+      <Box marginTop={1}>
+        <Text color={theme.colors.textMuted}>
+          ↑↓ navigate • enter select • esc quit
+        </Text>
+      </Box>
+    </Box>
+  );
+};
+
+// Hook for handling keyboard input in interactive components
+export function useMenuInput(
+  onKeyPress: (key: string) => void
+): (input: string, key: { return: string; escape: string; up: string; down: string }) => void {
+  return (input, key) => {
+    if (key.return || key.return === "\r") {
+      onKeyPress("return");
+    } else if (key.escape) {
+      onKeyPress("escape");
+    } else if (key.up || input === "k" || input === "w") {
+      onKeyPress("up");
+    } else if (key.down || input === "j" || input === "s") {
+      onKeyPress("down");
+    } else if (input) {
+      onKeyPress(input);
+    }
+  };
+}
+
+export default InteractiveMenu;

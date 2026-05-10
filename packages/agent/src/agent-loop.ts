@@ -324,7 +324,7 @@ async function executeToolCalls(
 		});
 
 		try {
-			const validatedArgs = validateToolArguments(tool.parameters, toolCall.arguments as any) as any;
+			const validatedArgs = validateToolArguments(tool, toolCall) as any;
 			const result = await tool.execute(toolCall.id, validatedArgs as any, signal);
 
 			results.push({
