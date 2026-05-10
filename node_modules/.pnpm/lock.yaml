@@ -1,0 +1,114 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.40
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/agent:
+    dependencies:
+      '@axiom/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@sinclair/typebox':
+        specifier: ^0.32.0
+        version: 0.32.35
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.40
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/ai:
+    dependencies:
+      '@sinclair/typebox':
+        specifier: ^0.32.0
+        version: 0.32.35
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.40
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/coding-agent:
+    dependencies:
+      '@axiom/agent-core':
+        specifier: workspace:*
+        version: link:../agent
+      '@axiom/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@axiom/tui':
+        specifier: workspace:*
+        version: link:../tui
+      '@sinclair/typebox':
+        specifier: ^0.32.0
+        version: 0.32.35
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.40
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/tui:
+    dependencies:
+      chalk:
+        specifier: ^5.3.0
+        version: 5.6.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.40
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+packages:
+
+  '@sinclair/typebox@0.32.35':
+    resolution: {integrity: sha512-Ul3YyOTU++to8cgNkttakC0dWvpERr6RYoHO2W47DLbFvrwBDJUY31B1sImH6JZSYc4Kt4PyHtoPNu+vL2r2dA==}
+
+  '@types/node@20.19.40':
+    resolution: {integrity: sha512-xxx6M2IpSTnnKcR0cMvIiohkiCx20/oRPtWGbenFygKCGl3zqUzdNjQ/1V4solq1LU+dgv0nQzeGOuqkqZGg0Q==}
+
+  chalk@5.6.2:
+    resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
+    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
+snapshots:
+
+  '@sinclair/typebox@0.32.35': {}
+
+  '@types/node@20.19.40':
+    dependencies:
+      undici-types: 6.21.0
+
+  chalk@5.6.2: {}
+
+  typescript@5.9.3: {}
+
+  undici-types@6.21.0: {}

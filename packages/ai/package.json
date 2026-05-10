@@ -1,0 +1,52 @@
+{
+  "name": "@axiom/ai",
+  "version": "0.1.0",
+  "description": "Unified LLM API with multi-provider support",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./oauth": {
+      "import": "./dist/oauth.js",
+      "types": "./dist/oauth.d.ts"
+    },
+    "./providers/amazon-bedrock": {
+      "import": "./dist/providers/amazon-bedrock.js",
+      "types": "./dist/providers/amazon-bedrock.d.ts"
+    },
+    "./providers/anthropic": {
+      "import": "./dist/providers/anthropic.js",
+      "types": "./dist/providers/anthropic.d.ts"
+    },
+    "./providers/google": {
+      "import": "./dist/providers/google.js",
+      "types": "./dist/providers/google.d.ts"
+    },
+    "./providers/openai-completions": {
+      "import": "./dist/providers/openai-completions.js",
+      "types": "./dist/providers/openai-completions.d.ts"
+    },
+    "./providers/openai-responses": {
+      "import": "./dist/providers/openai-responses.js",
+      "types": "./dist/providers/openai-responses.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "check": "tsc --noEmit --project tsconfig.json"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.32.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0"
+  }
+}

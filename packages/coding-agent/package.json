@@ -1,0 +1,28 @@
+{
+  "name": "@axiom/coding-agent",
+  "version": "0.1.0",
+  "description": "Axiom - Terminal Coding Agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "axiom": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "check": "tsc --noEmit --project tsconfig.json"
+  },
+  "dependencies": {
+    "@axiom/ai": "workspace:*",
+    "@axiom/agent-core": "workspace:*",
+    "@axiom/tui": "workspace:*",
+    "@sinclair/typebox": "^0.32.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0"
+  }
+}
