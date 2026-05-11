@@ -16,7 +16,7 @@ export { InputManager } from "./InputManager.js";
 export type { InputManagerProps, Command } from "./InputManager.js";
 export { InteractiveMenu, useMenuInput } from "./InteractiveMenu.js";
 export type { InteractiveMenuProps, MenuItem } from "./InteractiveMenu.js";
-export { StreamingResponse, StreamingThinking } from "./StreamingResponse.js";
+export { StreamingResponse, StreamingThinking, EnhancedSpinnerRow, GlimmerMessage } from "./StreamingResponse.js";
 export { ToolOutput, ToolChain } from "./ToolOutput.js";
 export { DiffView, createSimpleDiff } from "./DiffView.js";
 export type { DiffLine, DiffChange, DiffViewProps } from "./DiffView.js";

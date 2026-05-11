@@ -10,7 +10,7 @@ export { StatusIndicator } from "./StatusIndicator.js";
 export { InputManager } from "./InputManager.js";
 export { InteractiveMenu, useMenuInput } from "./InteractiveMenu.js";
 // New advanced components
-export { StreamingResponse, StreamingThinking } from "./StreamingResponse.js";
+export { StreamingResponse, StreamingThinking, EnhancedSpinnerRow, GlimmerMessage } from "./StreamingResponse.js";
 export { ToolOutput, ToolChain } from "./ToolOutput.js";
 export { DiffView, createSimpleDiff } from "./DiffView.js";
 export { MarkdownRenderer } from "./MarkdownRenderer.js";

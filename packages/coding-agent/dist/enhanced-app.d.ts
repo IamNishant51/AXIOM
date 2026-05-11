@@ -1,6 +1,6 @@
 /**
  * EnhancedApp.tsx - Full Claude Code CLI Experience
- * Real-time streaming, collapsible thinking, tool display, status bar
+ * Enhanced with OpenClaude-style animations, glimmer effects, and premium UI
  */
 import React from "react";
 export declare const EnhancedApp: React.FC<{

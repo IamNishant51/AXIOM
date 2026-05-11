@@ -25,7 +25,7 @@ export { InteractiveMenu, useMenuInput } from "./InteractiveMenu.js";
 export type { InteractiveMenuProps, MenuItem } from "./InteractiveMenu.js";
 
 // New advanced components
-export { StreamingResponse, StreamingThinking } from "./StreamingResponse.js";
+export { StreamingResponse, StreamingThinking, EnhancedSpinnerRow, GlimmerMessage } from "./StreamingResponse.js";
 
 export { ToolOutput, ToolChain } from "./ToolOutput.js";
 

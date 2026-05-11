@@ -8,13 +8,13 @@
  *   import { Panel, SmoothSpinner, StreamedText } from '@axiom/tui-react';
  */
 // Theme system
-export { defaultTheme, lightTheme, setTheme, getTheme, useTheme, } from "./theme/index.js";
+export { defaultTheme, lightTheme, setTheme, getTheme, useTheme, resolveColor, parseRGB, interpolateColor, toRGBColor, ERROR_RED, THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, } from "./theme/index.js";
 // Theme loading
 export { loadTheme, saveTheme, listThemes, createDefaultTheme, mergeTheme, } from "./theme/loadTheme.js";
 // Core components
 export { Panel, SmoothSpinner, StreamedText, StaticText, StreamedResponse, StreamingResponse, StreamingThinking, StaticResponse as StaticMessage, StatusIndicator, InputManager, InteractiveMenu, useMenuInput, } from "./components/index.js";
 // New advanced components
-export { DiffView, ToolOutput, ToolChain, MarkdownRenderer, createSimpleDiff, } from "./components/index.js";
+export { DiffView, ToolOutput, ToolChain, MarkdownRenderer, EnhancedSpinnerRow, GlimmerMessage, createSimpleDiff, } from "./components/index.js";
 // Phase 3 - Interaction & UX
 export { TranscriptView, VimInput, } from "./components/index.js";
 // Phase 4 - Panel & Layout

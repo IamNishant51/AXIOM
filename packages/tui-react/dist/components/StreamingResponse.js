@@ -1,27 +1,136 @@
 /**
- * StreamingResponse Component - Real-time streaming text
- * Character-by-character streaming with no layout jitter
+ * StreamingResponse Component - Enhanced with OpenClaude-style animations
+ * Real-time streaming text with glimmer effect, stalled detection, and token counter
  */
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, useEffect, useRef, memo, } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../theme/index.js";
-// Memoized to prevent re-renders
-const StreamedContent = memo(({ content, style, theme }) => {
-    if (style === "markdown") {
-        const lines = content.split("\n");
-        return (React.createElement(Box, { flexDirection: "column" }, lines.map((line, i) => (React.createElement(Text, { key: i, color: theme.colors.text }, line || " ")))));
+import { useTheme, parseRGB, interpolateColor, toRGBColor, ERROR_RED } from "../theme/index.js";
+// Calculate string width (simple ASCII approximation)
+function stringWidth(str) {
+    let width = 0;
+    for (const char of str) {
+        // Full-width characters
+        if (char >= "一" && char <= "鿿") {
+            width += 2;
+        }
+        else if (char >= "＀" && char <= "￯") {
+            width += 2;
+        }
+        else {
+            width += 1;
+        }
     }
-    return React.createElement(Text, { color: theme.colors.text }, content);
+    return width;
+}
+// GlimmerMessage - Text with shimmer effect
+export const GlimmerMessage = memo(({ message, messageColor, shimmerColor, glimmerIndex, stalledIntensity }) => {
+    const messageWidth = stringWidth(message);
+    // Error red interpolation for stalled state
+    let displayColor = messageColor;
+    if (stalledIntensity > 0) {
+        const baseRGB = parseRGB(messageColor);
+        if (baseRGB) {
+            const interpolated = interpolateColor(baseRGB, ERROR_RED, stalledIntensity);
+            displayColor = toRGBColor(interpolated);
+        }
+    }
+    // Glimmer effect - split message into before/shimmer/after
+    const shimmerStart = glimmerIndex - 1;
+    const shimmerEnd = glimmerIndex + 1;
+    if (shimmerStart >= messageWidth || shimmerEnd < 0 || message === "") {
+        return (React.createElement(Text, { color: displayColor }, message));
+    }
+    const clampedStart = Math.max(0, shimmerStart);
+    let before = "";
+    let shim = "";
+    let after = "";
+    let colPos = 0;
+    // Simple character-by-character parsing
+    for (const char of message) {
+        const charWidth = char >= "一" && char <= "鿿" ? 2 : 1;
+        if (colPos + charWidth <= clampedStart) {
+            before += char;
+        }
+        else if (colPos > shimmerEnd) {
+            after += char;
+        }
+        else {
+            shim += char;
+        }
+        colPos += charWidth;
+    }
+    return (React.createElement(React.Fragment, null,
+        before && React.createElement(Text, { color: displayColor }, before),
+        shim && React.createElement(Text, { color: shimmerColor }, shim),
+        after && React.createElement(Text, { color: displayColor }, after)));
 });
-StreamedContent.displayName = "StreamedContent";
-export const StreamingResponse = ({ initialContent = "", isStreaming = false, onComplete, showCursor = true, style = "plain", }) => {
+GlimmerMessage.displayName = "GlimmerMessage";
+// SpinnerGlyph - Animated spinner character
+const SpinnerGlyph = memo(({ frame, messageColor, stalledIntensity }) => {
+    const theme = useTheme();
+    const SPINNER_FRAMES = [
+        "⠋",
+        "⠙",
+        "⠹",
+        "⠸",
+        "⠼",
+        "⠴",
+        "⠦",
+        "⠧",
+        "⠇",
+        "⠏",
+    ];
+    const fullFrames = [...SPINNER_FRAMES, ...[...SPINNER_FRAMES].reverse()];
+    const spinnerChar = fullFrames[frame % fullFrames.length];
+    let displayColor = messageColor;
+    if (stalledIntensity > 0) {
+        const baseRGB = parseRGB(messageColor);
+        if (baseRGB) {
+            const interpolated = interpolateColor(baseRGB, ERROR_RED, stalledIntensity);
+            displayColor = toRGBColor(interpolated);
+        }
+    }
+    return (React.createElement(Box, { flexWrap: "wrap", height: 1, width: 2 },
+        React.createElement(Text, { color: displayColor }, spinnerChar)));
+});
+SpinnerGlyph.displayName = "SpinnerGlyph";
+export const StreamingResponse = ({ initialContent = "", isStreaming = false, onComplete, showCursor = true, style = "plain", showGlimmer = true, showStalledIndicator = true, stalledIntensity = 0, }) => {
     const theme = useTheme();
     const [displayedContent, setDisplayedContent] = useState(initialContent);
     const [isComplete, setIsComplete] = useState(!isStreaming);
     const [cursorVisible, setCursorVisible] = useState(true);
+    const [glimmerIndex, setGlimmerIndex] = useState(-100);
+    const [time, setTime] = useState(0);
     const contentRef = useRef(initialContent);
     const indexRef = useRef(initialContent.length);
     const timeoutRef = useRef(null);
+    const animationRef = useRef(null);
+    // Animation frame for glimmer effect
+    useEffect(() => {
+        if (!isStreaming || isComplete) {
+            setGlimmerIndex(-100);
+            return;
+        }
+        const glimmerSpeed = 200;
+        const messageWidth = stringWidth(displayedContent);
+        const cycleLength = messageWidth + 20;
+        const animate = () => {
+            setTime((prev) => {
+                const newTime = prev + 50;
+                const position = Math.floor(newTime / glimmerSpeed);
+                const index = messageWidth + 10 - (position % cycleLength);
+                setGlimmerIndex(index);
+                return newTime;
+            });
+            animationRef.current = setTimeout(animate, 50);
+        };
+        animationRef.current = setTimeout(animate, 50);
+        return () => {
+            if (animationRef.current) {
+                clearTimeout(animationRef.current);
+            }
+        };
+    }, [isStreaming, isComplete, displayedContent]);
     // Update ref when initialContent changes
     useEffect(() => {
         contentRef.current = initialContent;
@@ -47,15 +156,15 @@ export const StreamingResponse = ({ initialContent = "", isStreaming = false, on
             if (!remaining) {
                 setIsComplete(true);
                 setCursorVisible(true);
+                setGlimmerIndex(-100);
                 onComplete?.();
                 return;
             }
-            // Type faster for streaming - 1-3 chars at a time for smooth but fast feel
+            // Type faster for streaming - 1-3 chars at a time
             const chunkSize = remaining.length > 50 ? 5 : remaining.length > 20 ? 3 : 1;
             const chunk = remaining.slice(0, chunkSize);
             indexRef.current += chunkSize;
             setDisplayedContent((prev) => prev + chunk);
-            // Variable speed based on content
             const delay = chunkSize * 8;
             timeoutRef.current = setTimeout(typeNext, delay);
         };
@@ -66,32 +175,100 @@ export const StreamingResponse = ({ initialContent = "", isStreaming = false, on
             }
         };
     }, [isComplete, isStreaming, onComplete]);
-    // If not streaming and has content, render immediately
+    // Render content with glimmer effect
     const renderContent = () => {
-        if (!isStreaming && displayedContent) {
-            return React.createElement(StreamedContent, { content: displayedContent, style: style, theme: theme });
+        if (style === "markdown") {
+            const lines = displayedContent.split("\n");
+            return (React.createElement(Box, { flexDirection: "column" }, lines.map((line, i) => (React.createElement(Text, { key: i, color: theme.colors.text }, showGlimmer && i === lines.length - 1 ? (React.createElement(GlimmerMessage, { message: line || " ", messageColor: theme.colors.text, shimmerColor: theme.colors.claudeShimmer, glimmerIndex: glimmerIndex, stalledIntensity: stalledIntensity })) : (line || " "))))));
         }
-        // Streaming mode
-        return React.createElement(StreamedContent, { content: displayedContent, style: style, theme: theme });
+        return showGlimmer ? (React.createElement(GlimmerMessage, { message: displayedContent, messageColor: theme.colors.text, shimmerColor: theme.colors.claudeShimmer, glimmerIndex: glimmerIndex, stalledIntensity: stalledIntensity })) : (React.createElement(Text, { color: theme.colors.text }, displayedContent));
     };
     return (React.createElement(Box, { flexDirection: "column" },
         renderContent(),
         showCursor && isStreaming && !isComplete && (React.createElement(Text, { color: cursorVisible ? theme.colors.cursor : "transparent" }, "\u2588"))));
 };
-// Streaming thinking component with distinctive styling
-export const StreamingThinking = ({ thinking, isStreaming = false, isExpanded = true }) => {
+// Streaming thinking component with shimmer effect
+export const StreamingThinking = ({ thinking, isStreaming = false, isExpanded = true, showShimmer = true, thinkingIntensity = 0, }) => {
     const theme = useTheme();
     if (!isExpanded) {
         return (React.createElement(Box, { flexDirection: "row", alignItems: "center" },
             React.createElement(Text, { color: theme.colors.secondary }, "\u25B6"),
-            React.createElement(Text, { color: theme.colors.textMuted }, " Reasoning")));
+            React.createElement(Text, { color: theme.colors.inactive }, " Reasoning")));
+    }
+    // Calculate thinking shimmer color
+    let thinkingColor = theme.colors.inactive;
+    if (showShimmer && thinkingIntensity > 0) {
+        const fromRGB = { r: 153, g: 153, b: 153 };
+        const toRGB = { r: 193, g: 193, b: 193 };
+        const interpolated = interpolateColor(fromRGB, toRGB, thinkingIntensity);
+        thinkingColor = toRGBColor(interpolated);
     }
     return (React.createElement(Box, { flexDirection: "column", marginBottom: 1 },
-        React.createElement(Box, { flexDirection: "row", alignItems: "center" },
-            React.createElement(Text, { color: theme.colors.secondary }, "\u25BC"),
-            React.createElement(Text, { color: theme.colors.textMuted }, " Reasoning"),
-            isStreaming && (React.createElement(Text, { color: theme.colors.textMuted }, " "))),
+        React.createElement(Box, { flexDirection: "row", alignItems: "center", borderStyle: "round", borderColor: theme.colors.inactive, paddingX: 1 },
+            React.createElement(Text, { color: theme.colors.secondary }, "\u25C9"),
+            React.createElement(Text, { color: theme.colors.inactive }, " Reasoning"),
+            isStreaming && (React.createElement(Text, { color: thinkingColor }, " \u25CF"))),
         React.createElement(Box, { paddingLeft: 2, flexDirection: "column", marginTop: 1 },
-            React.createElement(Text, { color: theme.colors.textDim, italic: true }, thinking))));
+            React.createElement(Text, { color: theme.colors.inactive, italic: true }, thinking))));
+};
+// Enhanced spinner row with OpenClaude-style animations
+export const EnhancedSpinnerRow = ({ message, mode = "responding", isStreaming = true, tokens = 0, elapsed = "", thinkingText = "", thinkingIntensity = 0, stalledIntensity = 0, reducedMotion = false, }) => {
+    const theme = useTheme();
+    const [time, setTime] = useState(0);
+    const [frame, setFrame] = useState(0);
+    // Animation frame
+    useEffect(() => {
+        if (reducedMotion || !isStreaming)
+            return;
+        const animate = () => {
+            setTime((prev) => prev + 50);
+            setFrame((prev) => prev + 1);
+        };
+        const interval = setInterval(animate, 50);
+        return () => clearInterval(interval);
+    }, [isStreaming, reducedMotion]);
+    // Calculate glimmer
+    const messageWidth = stringWidth(message);
+    const glimmerSpeed = mode === "requesting" ? 50 : 200;
+    const cycleLength = messageWidth + 20;
+    const glimmerIndex = reducedMotion
+        ? -100
+        : cycleLength + 10 - (Math.floor(time / glimmerSpeed) % cycleLength);
+    // Thinking shimmer
+    let thinkingColor = theme.colors.inactive;
+    if (thinkingIntensity > 0) {
+        const fromRGB = { r: 153, g: 153, b: 153 };
+        const toRGB = { r: 193, g: 193, b: 193 };
+        const interpolated = interpolateColor(fromRGB, toRGB, thinkingIntensity);
+        thinkingColor = toRGBColor(interpolated);
+    }
+    // Stalled color
+    let messageColor = theme.colors.claude;
+    if (stalledIntensity > 0) {
+        const baseRGB = parseRGB(theme.colors.claude);
+        if (baseRGB) {
+            const interpolated = interpolateColor(baseRGB, ERROR_RED, stalledIntensity);
+            messageColor = toRGBColor(interpolated);
+        }
+    }
+    return (React.createElement(Box, { flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
+        isStreaming && (React.createElement(React.Fragment, null,
+            React.createElement(SpinnerGlyph, { frame: frame, messageColor: theme.colors.claude, stalledIntensity: stalledIntensity }),
+            React.createElement(Text, null, " "))),
+        React.createElement(Text, { color: messageColor }, message),
+        React.createElement(Text, { color: theme.colors.inactive }, "\u2026"),
+        thinkingText && (React.createElement(Text, { color: thinkingColor },
+            " ",
+            "(",
+            thinkingText,
+            ")")),
+        elapsed && (React.createElement(Text, { dimColor: true },
+            " · ",
+            elapsed)),
+        tokens > 0 && (React.createElement(Box, { flexDirection: "row" },
+            React.createElement(Text, { dimColor: true }, "\u2193 "),
+            React.createElement(Text, { dimColor: true },
+                Math.round(tokens / 4),
+                " tokens")))));
 };
 export default StreamingResponse;

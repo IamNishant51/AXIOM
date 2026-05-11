@@ -297,7 +297,21 @@ OPENCODE_API_KEY="sk-..." node dist/main.js "edit package.json to change version
 
 ---
 
-## Future Enhancements (Planned)
+## Documentation Created
+
+### openclaude_details.md
+Created detailed analysis of OpenClaude UI/UX patterns:
+- **Theme System**: Complete color palette with shimmer variants
+- **Spinner System**: SpinnerAnimationRow with 50ms animation, token counter, stalled detection
+- **GlimmerMessage**: Character-by-character shimmer effect with grapheme segmentation
+- **StatusLine**: Command-based customizable status bar
+- **LogoV2/Clawd**: Mascot ASCII art with multiple poses
+- **Message System**: Virtual scrolling, message types, grouping
+- **Animation Hooks**: useAnimationFrame(50ms), useStalledAnimation, useShimmerAnimation
+- **React Compiler Patterns**: Caching optimization patterns
+- **Performance**: OffscreenFreeze, memo, virtual scrolling
+
+### Future Enhancements (Planned)
 
 These items from OPENCLAUDE_ANALYSIS_PLAN.md are marked for future enhancement:
 
@@ -325,6 +339,50 @@ These items from OPENCLAUDE_ANALYSIS_PLAN.md are marked for future enhancement:
 - **Markdown table rendering** - ✅ Professional ASCII tables with box-drawing
 - **Syntax highlighting** - ✅ Shell, JS, Python, JSON in code blocks
 - **Backspace fix** - ✅ InputManager and EnhancedApp backspace handling
+
+### UI/UX Overhaul (2026-05-11) - OpenClaude Style
+- **Theme System Rewrite** - ✅ Complete OpenClaude-inspired color palette
+  - Primary claude orange with shimmer variants
+  - Inactive/subtle text colors
+  - RGB color interpolation utilities
+  - Error red for stalled animations
+- **Enhanced Theme Colors** - ✅ Added textMuted, textDim aliases for compatibility
+- **Animation Hooks** - ✅ utils/animation.ts with OpenClaude patterns
+  - useAnimationFrame (50ms interval)
+  - useStalledAnimation (red transition after 3s)
+  - useGlimmerAnimation (text shimmer)
+  - useTokenCounterAnimation (smooth increment)
+  - useThinkingShimmer (glow effect)
+- **StreamingResponse Rewrite** - ✅ GlimmerMessage with character shimmer
+- **EnhancedSpinnerRow** - ✅ OpenClaude-style spinner with tokens/elapsed
+- **StatusBar Rewrite** - ✅ Animated token counter, stalled indicator
+- **EnhancedApp Rewrite** - ✅ Full OpenClaude-style UI with:
+  - 50ms animation frame
+  - Glimmer effect on streaming text
+  - Stalled detection (turns red after 3s)
+  - Token counter animation
+  - Thinking shimmer effect
+  - Ctrl+R for reduced motion toggle
+
+### Command Palette & Provider Management (2026-05-11)
+- **/ Commands** - ✅ Full command palette implementation
+  - Type `/` to open command palette
+  - Arrow keys (↑↓) to navigate
+  - Enter to select
+  - Esc to close
+- **Built-in Commands**:
+  - `/clear` - Clear conversation
+  - `/help` - Show all commands
+  - `/model <name>` - Change model
+  - `/provider <name>` - Switch provider
+  - `/providers` - List all providers
+  - `/apikey <provider> <key>` - Set API key
+  - `/motion` - Toggle reduced motion
+  - `/exit` - Exit Axiom
+- **Provider Management**:
+  - OpenCode, Anthropic, OpenAI, Google, Groq, xAI, Cerebras
+  - Environment variable display for each
+  - Model listings per provider
 
 ---
 

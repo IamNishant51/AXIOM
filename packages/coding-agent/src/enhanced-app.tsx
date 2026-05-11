@@ -1,13 +1,26 @@
 /**
  * EnhancedApp.tsx - Full Claude Code CLI Experience
- * Real-time streaming, collapsible thinking, tool display, status bar
+ * Enhanced with OpenClaude-style animations, glimmer effects, and premium UI
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Box, Text, useApp, useInput } from "ink";
-import { setTheme, defaultTheme, useTheme } from "@axiom/tui-react";
+import { useTheme, defaultTheme, resolveColor, parseRGB, interpolateColor, toRGBColor, ERROR_RED } from "@axiom/tui-react";
 import type { StatusState, Message } from "@axiom/tui-react";
-import { StreamingResponse, StreamingThinking, ToolOutput, ToolChain, DiffView, MarkdownRenderer, PermissionDialog, StatusBar, VimInput } from "@axiom/tui-react";
+import {
+  StreamingResponse,
+  StreamingThinking,
+  EnhancedSpinnerRow,
+  ToolOutput,
+  ToolChain,
+  DiffView,
+  MarkdownRenderer,
+  PermissionDialog,
+  StatusBar,
+  VimInput,
+  SmoothSpinner,
+  GlimmerMessage,
+} from "@axiom/tui-react";
 import { createSettingsManager } from "./core/settings-manager.js";
 import { createModelRegistry } from "./core/model-registry.js";
 import { Agent } from "@axiom/agent-core";
@@ -15,476 +28,1016 @@ import { defaultTools } from "./core/tools/index.js";
 import type { AssistantMessage, TextContent, ThinkingContent } from "@axiom/ai";
 
 // Set theme
-setTheme(defaultTheme);
+defaultTheme;
+
+// Spinner mode type
+type SpinnerMode = "thinking" | "requesting" | "tool-use" | "responding" | "tool-input";
 
 // Tool call interface
 interface ToolCall {
-	id: string;
-	name: string;
-	args: any;
-	status: "pending" | "running" | "done" | "error";
-	result?: string;
+  id: string;
+  name: string;
+  args: any;
+  status: "pending" | "running" | "done" | "error";
+  result?: string;
+}
+
+// Calculate string width
+function stringWidth(str: string): number {
+  let width = 0;
+  for (const char of str) {
+    if (char >= "一" && char <= "鿿") width += 2;
+    else if (char >= "０" && char <= "ｚ") width += 2;
+    else width += 1;
+  }
+  return width;
+}
+
+// Format duration
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
+
+// Command types
+interface Command {
+  name: string;
+  description: string;
+  action: () => void;
+  subcommands?: Command[];
+}
+
+// Available providers
+const PROVIDERS = [
+  { id: "opencode", name: "OpenCode", envVar: "OPENCODE_API_KEY" },
+  { id: "anthropic", name: "Anthropic", envVar: "ANTHROPIC_API_KEY" },
+  { id: "openai", name: "OpenAI", envVar: "OPENAI_API_KEY" },
+  { id: "google", name: "Google", envVar: "GEMINI_API_KEY" },
+  { id: "groq", name: "Groq", envVar: "GROQ_API_KEY" },
+  { id: "xai", name: "xAI", envVar: "XAI_API_KEY" },
+  { id: "cerebras", name: "Cerebras", envVar: "CEREBRAS_API_KEY" },
+];
+
+// Available models per provider
+const MODELS: Record<string, string[]> = {
+  opencode: ["opencode"],
+  anthropic: ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"],
+  openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+  google: ["gemini-2.5-pro", "gemini-2.5-flash"],
+  groq: ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"],
+  xai: ["grok-2", "grok-2-mini"],
+  cerebras: ["llama-3.3-70b"],
+};
+
+// Build commands list
+function buildCommands(
+  setMessages: (fn: (prev: Message[]) => Message[]) => void,
+  setShowHelp: (show: boolean) => void,
+  setCurrentModel: (model: string) => void,
+  setReducedMotion: (reduced: boolean) => void,
+  currentModel: string,
+  reducedMotion: boolean
+): Command[] {
+  return [
+    {
+      name: "/clear",
+      description: "Clear conversation",
+      action: () => setMessages(() => []),
+    },
+    {
+      name: "/help",
+      description: "Show all commands",
+      action: () => setShowHelp(true),
+    },
+    {
+      name: "/model",
+      description: `Current: ${currentModel}`,
+      action: () => {},
+      subcommands: Object.entries(MODELS).flatMap(([provider, models]) =>
+        models.map((model) => ({
+          name: `/model ${model}`,
+          description: `${provider} - ${model}`,
+          action: () => setCurrentModel(model),
+        }))
+      ),
+    },
+    {
+      name: "/provider",
+      description: "Manage API providers",
+      action: () => {},
+      subcommands: PROVIDERS.map((p) => ({
+        name: `/provider ${p.id}`,
+        description: `${p.name} (${p.envVar})`,
+        action: () => setCurrentModel(p.id),
+      })),
+    },
+    {
+      name: "/providers",
+      description: "List all providers",
+      action: () => {},
+      subcommands: PROVIDERS.map((p) => ({
+        name: `/providers ${p.id}`,
+        description: `${p.name}: ${p.envVar}`,
+        action: () => {},
+      })),
+    },
+    {
+      name: "/apikey",
+      description: "Set API key for provider",
+      action: () => {},
+      subcommands: PROVIDERS.map((p) => ({
+        name: `/apikey ${p.id} <key>`,
+        description: `Set ${p.name} API key`,
+        action: () => {},
+      })),
+    },
+    {
+      name: "/motion",
+      description: reducedMotion ? "Enable animations" : "Reduce motion",
+      action: () => setReducedMotion(!reducedMotion),
+    },
+    {
+      name: "/exit",
+      description: "Exit Axiom",
+      action: () => process.exit(0),
+    },
+  ];
 }
 
 // Main Enhanced App Component
 export const EnhancedApp: React.FC<{
-	onMessage?: (message: string) => void;
-	onExit?: () => void;
-	initialPrompt?: string;
+  onMessage?: (message: string) => void;
+  onExit?: () => void;
+  initialPrompt?: string;
 }> = ({ onMessage, onExit, initialPrompt }) => {
-	const theme = useTheme();
-	const { exit } = useApp();
+  const theme = useTheme();
+  const { exit } = useApp();
 
-	// Message state
-	const [messages, setMessages] = useState<Message[]>([]);
-	const [currentThinking, setCurrentThinking] = useState<string>("");
-	const [currentContent, setCurrentContent] = useState<string>("");
-	const [isStreaming, setIsStreaming] = useState(false);
+  // Settings
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [currentModel, setCurrentModel] = useState<string>("opencode");
 
-	// Thinking expansion state
-	const [showAllThinking, setShowAllThinking] = useState(false);
-	const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
+  // Message state
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentThinking, setCurrentThinking] = useState<string>("");
+  const [currentThinkingIntensity, setCurrentThinkingIntensity] = useState(0);
+  const [currentContent, setCurrentContent] = useState<string>("");
+  const [isStreaming, setIsStreaming] = useState(false);
 
-	// Tool state
-	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
-	const [currentToolCall, setCurrentToolCall] = useState<ToolCall | null>(null);
+  // Thinking expansion state
+  const [showAllThinking, setShowAllThinking] = useState(false);
+  const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
 
-	// UI state
-	const [aiState, setAiState] = useState<StatusState>("idle");
-	const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connected");
-	const [inputValue, setInputValue] = useState("");
-	const [inputMode, setInputMode] = useState<"normal" | "vim">("normal");
+  // Tool state
+  const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
+  const [currentToolCall, setCurrentToolCall] = useState<ToolCall | null>(null);
 
-	// Agent ref
-	const agentRef = useRef<any>(null);
-	const inputRef = useRef<HTMLInputElement | null>(null);
+  // Command palette state
+  const [showPalette, setShowPalette] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [paletteSearch, setPaletteSearch] = useState("");
 
-	// Initialize agent
-	useEffect(() => {
-		const settings = createSettingsManager();
-		const modelRegistry = createModelRegistry(settings);
-		const model = modelRegistry.getDefaultModel();
-		const apiKey = modelRegistry.getApiKey(model?.provider || "opencode");
+  // Help dialog state
+  const [showHelp, setShowHelp] = useState(false);
 
-		if (!apiKey) {
-			console.error("No API key found. Set OPENCODE_API_KEY.");
-			process.exit(1);
-		}
+  // Animation state
+  const [time, setTime] = useState(0);
+  const [frame, setFrame] = useState(0);
+  const [glimmerIndex, setGlimmerIndex] = useState(-100);
+  const [stalledIntensity, setStalledIntensity] = useState(0);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [lastTokenTime, setLastTokenTime] = useState(Date.now());
 
-		agentRef.current = new Agent({
-			initialState: {
-				systemPrompt: "You are Axiom. Be concise. Complete tasks efficiently.",
-				model,
-				tools: defaultTools,
-				messages: [],
-			},
-			getApiKey: async () => apiKey,
-			toolExecution: "sequential",
-		});
+  // UI state
+  const [aiState, setAiState] = useState<StatusState>("idle");
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connected");
+  const [inputValue, setInputValue] = useState("");
+  const [inputMode, setInputMode] = useState<"normal" | "vim">("normal");
 
-		// Subscribe to agent events
-		agentRef.current.subscribe((event: any) => {
-			switch (event.type) {
-				case "thinking_start":
-					setAiState("thinking");
-					setCurrentThinking(event.thinking || "");
-					break;
+  // Refs
+  const agentRef = useRef<any>(null);
+  const processingStartRef = useRef<number | null>(null);
+  const lastTokenRef = useRef(0);
+  const contentRef = useRef("");
 
-				case "thinking_update":
-					setCurrentThinking(event.thinking || "");
-					break;
+  // Animation frame effect (50ms for smooth animations)
+  useEffect(() => {
+    if (isStreaming) {
+      const interval = setInterval(() => {
+        setTime((prev) => prev + 50);
+        setFrame((prev) => prev + 1);
 
-				case "thinking_end":
-					setCurrentThinking("");
-					break;
+        // Update glimmer
+        const messageWidth = stringWidth(currentContent);
+        const cycleLength = messageWidth + 20;
+        const position = Math.floor(time / 200);
+        const index = messageWidth + 10 - (position % cycleLength);
+        setGlimmerIndex(index);
+      }, 50);
 
-				case "tool_execution_start":
-					setAiState("working");
-					const toolCall: ToolCall = {
-						id: `tool-${Date.now()}`,
-						name: event.toolName,
-						args: event.args || {},
-						status: "running",
-					};
-					setCurrentToolCall(toolCall);
-					setToolCalls(prev => [...prev, toolCall]);
-					break;
+      return () => clearInterval(interval);
+    } else {
+      setGlimmerIndex(-100);
+    }
+  }, [isStreaming, currentContent, time]);
 
-				case "tool_execution_end":
-					setToolCalls(prev =>
-						prev.map(tc =>
-							tc.id === currentToolCall?.id
-								? { ...tc, status: "done", result: event.result }
-								: tc
-						)
-					);
-					setCurrentToolCall(null);
-					setAiState("thinking");
-					break;
+  // Elapsed time tracking
+  useEffect(() => {
+    if (isStreaming && !processingStartRef.current) {
+      processingStartRef.current = Date.now();
+    } else if (!isStreaming) {
+      processingStartRef.current = null;
+    }
 
-				case "text_delta":
-					setCurrentContent(prev => prev + event.text);
-					break;
+    const interval = setInterval(() => {
+      if (processingStartRef.current) {
+        setElapsedMs(Date.now() - processingStartRef.current);
+      }
+    }, 100);
 
-				case "message_complete":
-					setAiState("success");
-					setTimeout(() => setAiState("idle"), 1500);
-					break;
+    return () => clearInterval(interval);
+  }, [isStreaming]);
 
-				case "error":
-					setAiState("error");
-					setTimeout(() => setAiState("idle"), 2000);
-					break;
-			}
-		});
+  // Stalled detection
+  useEffect(() => {
+    if (totalTokens > lastTokenRef.current) {
+      lastTokenRef.current = totalTokens;
+      setLastTokenTime(Date.now());
+      setStalledIntensity(0);
+    }
 
-		// Initial prompt
-		if (initialPrompt) {
-			handleSubmit(initialPrompt);
-		}
-	}, []);
+    const checkStalled = () => {
+      const timeSinceLastToken = Date.now() - lastTokenTime;
+      if (timeSinceLastToken > 3000 && isStreaming) {
+        const intensity = Math.min((timeSinceLastToken - 3000) / 2000, 1);
+        setStalledIntensity(intensity);
+      }
+    };
 
-	// Toggle thinking expansion
-	const toggleThinking = useCallback((msgId: string) => {
-		setExpandedThinking(prev => {
-			const next = new Set(prev);
-			if (next.has(msgId)) {
-				next.delete(msgId);
-			} else {
-				next.add(msgId);
-			}
-			return next;
-		});
-	}, []);
+    const interval = setInterval(checkStalled, 500);
+    return () => clearInterval(interval);
+  }, [totalTokens, lastTokenTime, isStreaming]);
 
-	// Keyboard shortcuts - use ref to avoid closure issues
-	const inputModeRef = useRef(inputMode);
-	inputModeRef.current = inputMode;
+  // Initialize agent
+  useEffect(() => {
+    const settings = createSettingsManager();
+    const modelRegistry = createModelRegistry(settings);
+    const model = modelRegistry.getDefaultModel();
+    const apiKey = modelRegistry.getApiKey(model?.provider || "opencode");
 
-	useInput((input, key) => {
-		// Ctrl+C to interrupt - only if not typing
-		if (input === "c" && key.ctrl) {
-			agentRef.current?.cancel?.();
-			setIsStreaming(false);
-			setAiState("idle");
-			return;
-		}
+    if (!apiKey) {
+      console.error("No API key found. Set OPENCODE_API_KEY.");
+      process.exit(1);
+    }
 
-		// Tab to toggle thinking - only when not in vim mode and not typing
-		if (key.tab && inputModeRef.current !== "vim" && !isStreaming) {
-			setShowAllThinking(prev => !prev);
-			return;
-		}
+    agentRef.current = new Agent({
+      initialState: {
+        systemPrompt: "You are Axiom. Be concise. Complete tasks efficiently.",
+        model,
+        tools: defaultTools,
+        messages: [],
+      },
+      getApiKey: async () => apiKey,
+      toolExecution: "sequential",
+    });
 
-		// Ctrl+V for vim mode
-		if (input === "v" && key.ctrl) {
-			setInputMode(prev => prev === "vim" ? "normal" : "vim");
-			return;
-		}
+    // Subscribe to agent events
+    agentRef.current.subscribe((event: any) => {
+      switch (event.type) {
+        case "thinking_start":
+          setAiState("thinking");
+          setCurrentThinking(event.thinking || "");
+          break;
 
-		// Escape to exit vim mode only
-		if (key.escape && inputModeRef.current === "vim") {
-			setInputMode("normal");
-			return;
-		}
+        case "thinking_update":
+          setCurrentThinking(event.thinking || "");
+          break;
 
-		// Don't intercept arrow keys, backspace, or other typing keys
-		// Let them pass through to child components
-	});
+        case "thinking_end":
+          setCurrentThinking("");
+          break;
 
-	// Handle message submit
-	const handleSubmit = useCallback(async (text: string) => {
-		if (!text.trim() || !agentRef.current) return;
+        case "tool_execution_start":
+          setAiState("working");
+          const toolCall: ToolCall = {
+            id: `tool-${Date.now()}`,
+            name: event.toolName,
+            args: event.args || {},
+            status: "running",
+          };
+          setCurrentToolCall(toolCall);
+          setToolCalls((prev) => [...prev, toolCall]);
+          break;
 
-		// Add user message
-		const userMsg: Message = {
-			id: `user-${Date.now()}`,
-			role: "user",
-			content: text,
-			timestamp: Date.now(),
-		};
-		setMessages(prev => [...prev, userMsg]);
-		setInputValue("");
-		setIsStreaming(true);
-		setCurrentContent("");
-		setCurrentThinking("");
-		setToolCalls([]);
+        case "tool_execution_end":
+          setToolCalls((prev) =>
+            prev.map((tc) =>
+              tc.id === currentToolCall?.id
+                ? { ...tc, status: "done", result: event.result }
+                : tc
+            )
+          );
+          setCurrentToolCall(null);
+          setAiState("thinking");
+          break;
 
-		// Create assistant message placeholder
-		const assistantMsgId = `assistant-${Date.now()}`;
+        case "text_delta":
+          setCurrentContent((prev) => prev + event.text);
+          contentRef.current += event.text;
+          setTotalTokens((prev) => prev + 1);
+          break;
 
-		try {
-			await agentRef.current.prompt(text);
+        case "message_complete":
+          setAiState("success");
+          setTimeout(() => setAiState("idle"), 1500);
+          break;
 
-			// Get the last assistant message
-			const allMessages = agentRef.current.state.messages;
-			const assistantMsgs = allMessages.filter((m: any) => m.role === "assistant");
-			const lastMsg = assistantMsgs[assistantMsgs.length - 1] as AssistantMessage;
+        case "error":
+          setAiState("error");
+          setTimeout(() => setAiState("idle"), 2000);
+          break;
+      }
+    });
 
-			const textContent = lastMsg?.content?.find((c: any) => c.type === "text") as TextContent | undefined;
-			const thinkingContent = lastMsg?.content?.find((c: any) => c.type === "thinking") as ThinkingContent | undefined;
+    // Initial prompt
+    if (initialPrompt) {
+      handleSubmit(initialPrompt);
+    }
+  }, []);
 
-			// Update with final content
-			setMessages(prev => {
-				const updated = [...prev];
-				const assistantIndex = updated.findIndex(m => m.id === assistantMsgId);
-				if (assistantIndex >= 0) {
-					updated[assistantIndex] = {
-						...updated[assistantIndex],
-						content: textContent?.text || currentContent || "Completed",
-						timestamp: Date.now(),
-					};
-				} else {
-					updated.push({
-						id: assistantMsgId,
-						role: "assistant",
-						content: textContent?.text || currentContent || "Completed",
-						timestamp: Date.now(),
-						thinking: thinkingContent?.thinking,
-					});
-				}
-				return updated;
-			});
+  // Toggle thinking expansion
+  const toggleThinking = useCallback((msgId: string) => {
+    setExpandedThinking((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) {
+        next.delete(msgId);
+      } else {
+        next.add(msgId);
+      }
+      return next;
+    });
+  }, []);
 
-		} catch (error) {
-			console.error("Error:", error);
-			setAiState("error");
-		}
+  // Keyboard shortcuts
+  const inputModeRef = useRef(inputMode);
+  inputModeRef.current = inputMode;
 
-		setIsStreaming(false);
-	}, [currentContent]);
+  useInput((input, key) => {
+    // Ctrl+C to interrupt
+    if (input === "c" && key.ctrl) {
+      agentRef.current?.cancel?.();
+      setIsStreaming(false);
+      setAiState("idle");
+      return;
+    }
 
-	// Render thinking for a message
-	const renderThinking = useCallback((msg: Message) => {
-		if (!msg.thinking) return null;
+    // Tab to toggle thinking
+    if (key.tab && inputModeRef.current !== "vim" && !isStreaming) {
+      setShowAllThinking((prev) => !prev);
+      return;
+    }
 
-		const isExpanded = showAllThinking || expandedThinking.has(msg.id);
+    // Ctrl+V for vim mode
+    if (input === "v" && key.ctrl) {
+      setInputMode((prev) => (prev === "vim" ? "normal" : "vim"));
+      return;
+    }
 
-		return (
-			<Box flexDirection="column" marginBottom={1}>
-				<Box flexDirection="row" alignItems="center">
-					<Text color={theme.colors.secondary}>
-						{isExpanded ? "▼" : "▶"}
-					</Text>
-					<Text color={theme.colors.textMuted}> </Text>
-					<Text color={theme.colors.secondary} bold>Reasoning</Text>
-					<Text color={theme.colors.textMuted}> </Text>
-					<Text dimColor color={theme.colors.textMuted}>
-						[Tab]
-					</Text>
-				</Box>
-				{isExpanded && (
-					<Box paddingLeft={2} flexDirection="column" marginTop={1}>
-						<Text color={theme.colors.textDim} italic>
-							{msg.thinking}
-						</Text>
-					</Box>
-				)}
-			</Box>
-		);
-	}, [showAllThinking, expandedThinking, theme]);
+    // Escape to exit vim mode
+    if (key.escape && inputModeRef.current === "vim") {
+      setInputMode("normal");
+      return;
+    }
 
-	// Render a message
-	const renderMessage = useCallback((msg: Message) => {
-		const isUser = msg.role === "user";
+    // Ctrl+R for reduced motion toggle
+    if (input === "r" && key.ctrl) {
+      setReducedMotion((prev) => !prev);
+      return;
+    }
+  });
 
-		return (
-			<Box key={msg.id} flexDirection="column" marginBottom={2}>
-				{/* Role indicator */}
-				<Box flexDirection="row" alignItems="center">
-					<Text bold color={isUser ? theme.colors.primary : theme.colors.accent}>
-						{isUser ? "❯" : "○"}
-					</Text>
-					<Text color={theme.colors.textMuted}> </Text>
-					<Text bold color={theme.colors.textDim}>
-						{isUser ? "You" : "Axiom"}
-					</Text>
-				</Box>
+  // Handle message submit
+  const handleSubmit = useCallback(
+    async (text: string) => {
+      if (!text.trim() || !agentRef.current) return;
 
-				{/* Content */}
-				<Box paddingLeft={2} flexDirection="column">
-					{/* Thinking/Reasoning */}
-					{!isUser && renderThinking(msg)}
+      // Add user message
+      const userMsg: Message = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: text,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setInputValue("");
+      setIsStreaming(true);
+      setCurrentContent("");
+      setCurrentThinking("");
+      setToolCalls([]);
+      setTotalTokens(0);
+      setElapsedMs(0);
+      contentRef.current = "";
 
-					{/* Message content with markdown */}
-					<MarkdownRenderer content={msg.content} />
-				</Box>
-			</Box>
-		);
-	}, [renderThinking, theme]);
+      const assistantMsgId = `assistant-${Date.now()}`;
 
-	// Render history
-	const renderHistory = () => {
-		if (messages.length === 0) {
-			return (
-				<Box flexDirection="column" alignItems="center" justifyContent="center" paddingY={4}>
-					<Text dimColor color={theme.colors.textMuted}>Type a message to start...</Text>
-				</Box>
-			);
-		}
+      try {
+        await agentRef.current.prompt(text);
 
-		return messages.map(msg => renderMessage(msg));
-	};
+        const allMessages = agentRef.current.state.messages;
+        const assistantMsgs = allMessages.filter(
+          (m: any) => m.role === "assistant"
+        );
+        const lastMsg = assistantMsgs[assistantMsgs.length - 1] as AssistantMessage;
 
-	// Render current streaming content
-	const renderStreamingContent = () => {
-		if (!isStreaming && !currentContent) return null;
+        const textContent = lastMsg?.content?.find(
+          (c: any) => c.type === "text"
+        ) as TextContent | undefined;
+        const thinkingContent = lastMsg?.content?.find(
+          (c: any) => c.type === "thinking"
+        ) as ThinkingContent | undefined;
 
-		return (
-			<Box flexDirection="column" marginBottom={2}>
-				{/* Role indicator */}
-				<Box flexDirection="row" alignItems="center">
-					<Text bold color={theme.colors.accent}>○</Text>
-					<Text color={theme.colors.textMuted}> </Text>
-					<Text bold color={theme.colors.textDim}>Axiom</Text>
-					<Text color={theme.colors.textMuted}> </Text>
-					<Text dimColor color={theme.colors.textMuted}>
-						{isStreaming ? "Thinking..." : ""}
-					</Text>
-				</Box>
+        setMessages((prev) => {
+          const updated = [...prev];
+          const assistantIndex = updated.findIndex(
+            (m) => m.id === assistantMsgId
+          );
+          if (assistantIndex >= 0) {
+            updated[assistantIndex] = {
+              ...updated[assistantIndex],
+              content: textContent?.text || currentContent || "Completed",
+              timestamp: Date.now(),
+            };
+          } else {
+            updated.push({
+              id: assistantMsgId,
+              role: "assistant",
+              content: textContent?.text || currentContent || "Completed",
+              timestamp: Date.now(),
+              thinking: thinkingContent?.thinking,
+            });
+          }
+          return updated;
+        });
+      } catch (error) {
+        console.error("Error:", error);
+        setAiState("error");
+      }
 
-				<Box paddingLeft={2} flexDirection="column">
-					{/* Thinking */}
-					{currentThinking && (
-						<StreamingThinking
-							thinking={currentThinking}
-							isStreaming={true}
-							isExpanded={true}
-						/>
-					)}
+      setIsStreaming(false);
+    },
+    [currentContent]
+  );
 
-					{/* Content */}
-					<StreamingResponse
-						initialContent={currentContent}
-						isStreaming={isStreaming}
-						showCursor={true}
-					/>
-				</Box>
-			</Box>
-		);
-	};
+  // Render thinking for a message
+  const renderThinking = useCallback(
+    (msg: Message) => {
+      if (!msg.thinking) return null;
 
-	// Render tool chain
-	const renderToolChain = () => {
-		if (toolCalls.length === 0) return null;
+      const isExpanded = showAllThinking || expandedThinking.has(msg.id);
 
-		return (
-			<Box marginTop={1}>
-				<ToolChain tools={toolCalls} />
-			</Box>
-		);
-	};
+      return (
+        <Box flexDirection="column" marginBottom={1}>
+          <Box flexDirection="row" alignItems="center">
+            <Text color={theme.colors.secondary}>
+              {isExpanded ? "▼" : "▶"}
+            </Text>
+            <Text color={theme.colors.inactive}> </Text>
+            <Text bold color={theme.colors.secondary}>Reasoning</Text>
+            <Text color={theme.colors.inactive}> </Text>
+            <Text dimColor color={theme.colors.subtle}>
+              [Tab]
+            </Text>
+          </Box>
+          {isExpanded && (
+            <Box
+              paddingLeft={2}
+              flexDirection="column"
+              marginTop={1}
+              borderStyle="round"
+              borderColor={theme.colors.inactive}
+            >
+              <Text color={theme.colors.inactive} italic>
+                {msg.thinking}
+              </Text>
+            </Box>
+          )}
+        </Box>
+      );
+    },
+    [showAllThinking, expandedThinking, theme]
+  );
 
-	// Simple input handler for normal mode
-	const SimpleInput: React.FC = () => {
-		const [value, setValue] = useState("");
-		const valueRef = useRef("");
+  // Render a message
+  const renderMessage = useCallback(
+    (msg: Message) => {
+      const isUser = msg.role === "user";
 
-		// Keep ref in sync
-		useEffect(() => {
-			valueRef.current = value;
-		}, [value]);
+      return (
+        <Box key={msg.id} flexDirection="column" marginBottom={2}>
+          {/* Role indicator */}
+          <Box flexDirection="row" alignItems="center">
+            <Text
+              bold
+              color={isUser ? theme.colors.primary : theme.colors.claude}
+            >
+              {isUser ? "❯" : "○"}
+            </Text>
+            <Text color={theme.colors.inactive}> </Text>
+            <Text bold color={theme.colors.inactive}>
+              {isUser ? "You" : "Axiom"}
+            </Text>
+          </Box>
 
-		useInput((input, key) => {
-			// Handle backspace - comprehensive coverage
-			if (key.backspace || key.delete || input === "\x7f" || input === "\b" || input === "⌫") {
-				setValue(prev => {
-					if (prev.length > 0) {
-						return prev.slice(0, -1);
-					}
-					return prev;
-				});
-				return;
-			}
+          {/* Content */}
+          <Box paddingLeft={2} flexDirection="column">
+            {/* Thinking/Reasoning */}
+            {!isUser && renderThinking(msg)}
 
-			// Handle return/submit
-			if (key.return) {
-				if (valueRef.current.trim()) {
-					handleSubmit(valueRef.current);
-					setValue("");
-				}
-				return;
-			}
+            {/* Message content with markdown */}
+            <MarkdownRenderer content={msg.content} />
+          </Box>
+        </Box>
+      );
+    },
+    [renderThinking, theme]
+  );
 
-			// Handle escape
-			if (key.escape) {
-				return;
-			}
+  // Render history
+  const renderHistory = () => {
+    if (messages.length === 0) {
+      return (
+        <Box
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          paddingY={4}
+        >
+          <Text dimColor color={theme.colors.inactive}>
+            Type a message to start...
+          </Text>
+        </Box>
+      );
+    }
 
-			// Regular character input - only printable characters
-			if (input && input.length === 1 && !key.ctrl && !key.meta && !key.backspace && !key.delete) {
-				const charCode = input.charCodeAt(0);
-				// Only accept printable characters (space to tilde) and extended ASCII
-				if ((charCode >= 32 && charCode <= 126) || charCode > 127) {
-					setValue(prev => prev + input);
-				}
-			}
-		});
+    return messages.map((msg) => renderMessage(msg));
+  };
 
-		return (
-			<Box flexDirection="row" alignItems="center">
-				<Text bold color={theme.colors.primary}>❯</Text>
-				<Text> </Text>
-				<Text color={theme.colors.text}>{value}</Text>
-				<Text color={theme.colors.cursor}>█</Text>
-			</Box>
-		);
-	};
+  // Render current streaming content
+  const renderStreamingContent = () => {
+    if (!isStreaming && !currentContent) return null;
 
-	return (
-		<Box flexDirection="column" height="100%">
-			{/* Header */}
-			<Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
-				<Box flexDirection="row" alignItems="center">
-					<Text bold color={theme.colors.primary}>▲</Text>
-					<Text> </Text>
-					<Text bold color={theme.colors.text}>Axiom</Text>
-				</Box>
-				<Box flexDirection="row" alignItems="center" gap={2}>
-					<Text dimColor color={theme.colors.textMuted}>[Tab] reasoning</Text>
-					<Text dimColor color={theme.colors.textMuted}>[Ctrl+V] vim</Text>
-					<Text dimColor color={theme.colors.textMuted}>[Ctrl+C] stop</Text>
-				</Box>
-			</Box>
+    // Calculate thinking shimmer
+    const thinkingOpacity =
+      currentThinkingIntensity > 0
+        ? (Math.sin(time / 2000) + 1) / 2
+        : 0;
 
-			{/* Divider */}
-			<Box>
-				<Text dimColor color={theme.colors.borderDim}>────────────────────────────────────────────────────────────────────────</Text>
-			</Box>
+    let thinkingColor = theme.colors.inactive;
+    if (thinkingOpacity > 0) {
+      const fromRGB = { r: 153, g: 153, b: 153 };
+      const toRGB = { r: 193, g: 193, b: 193 };
+      const interpolated = interpolateColor(fromRGB, toRGB, thinkingOpacity);
+      thinkingColor = toRGBColor(interpolated);
+    }
 
-			{/* Messages area */}
-			<Box flexDirection="column" flexGrow={1} overflow="hidden">
-				{renderHistory()}
-				{renderStreamingContent()}
-				{renderToolChain()}
-			</Box>
+    return (
+      <Box flexDirection="column" marginBottom={2}>
+        {/* Role indicator */}
+        <Box flexDirection="row" alignItems="center">
+          <Text bold color={theme.colors.claude}>○</Text>
+          <Text color={theme.colors.inactive}> </Text>
+          <Text bold color={theme.colors.inactive}>Axiom</Text>
+          <Text color={theme.colors.inactive}> </Text>
+          {isStreaming ? (
+            <Text dimColor color={theme.colors.inactive}>
+              {currentToolCall ? "Using tools..." : "Thinking..."}
+            </Text>
+          ) : (
+            ""
+          )}
+        </Box>
 
-			{/* Divider */}
-			<Box>
-				<Text dimColor color={theme.colors.borderDim}>────────────────────────────────────────────────────────────────────────</Text>
-			</Box>
+        <Box paddingLeft={2} flexDirection="column">
+          {/* Thinking with shimmer */}
+          {currentThinking && (
+            <Box
+              flexDirection="column"
+              marginBottom={1}
+              borderStyle="round"
+              borderColor={theme.colors.inactive}
+              paddingX={1}
+            >
+              <Box flexDirection="row" alignItems="center">
+                <Text color={theme.colors.secondary}>◉</Text>
+                <Text color={theme.colors.inactive}> Reasoning</Text>
+                <Text color={thinkingColor}> ●</Text>
+              </Box>
+              <Box paddingLeft={2} marginTop={1}>
+                <Text color={theme.colors.inactive} italic>
+                  {currentThinking}
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-			{/* Status bar */}
-			<StatusBar
-				connectionStatus={connectionStatus}
-				isProcessing={isStreaming}
-				toolName={currentToolCall?.name}
-			/>
+          {/* Content with glimmer effect */}
+          <Box flexDirection="row" flexWrap="wrap" alignItems="center">
+            <Text color={theme.colors.text}>
+              {currentContent}
+            </Text>
+            {isStreaming && (
+              <Text color={theme.colors.claude}> █</Text>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    );
+  };
 
-			{/* Input */}
-			<Box marginTop={1}>
-				{inputMode === "vim" ? (
-					<VimInput
-						onSubmit={handleSubmit}
-						placeholder="Message Axiom..."
-						initialValue={inputValue}
-					/>
-				) : (
-					<SimpleInput />
-				)}
-			</Box>
-		</Box>
-	);
+  // Render spinner row (OpenClaude style)
+  const renderSpinnerRow = () => {
+    if (!isStreaming) return null;
+
+    const verb = currentToolCall ? "Using tools" : "Thinking";
+    const elapsed = formatDuration(elapsedMs);
+    const tokens = Math.round(totalTokens / 4);
+
+    return (
+      <Box marginTop={1}>
+        <EnhancedSpinnerRow
+          message={verb}
+          mode={currentToolCall ? "tool-use" : "thinking"}
+          isStreaming={true}
+          tokens={totalTokens}
+          elapsed={elapsed}
+          thinkingText={
+            currentThinking ? `thinking (${Math.round(time / 1000)}s)` : undefined
+          }
+          thinkingIntensity={thinkingOpacity}
+          stalledIntensity={stalledIntensity}
+          reducedMotion={reducedMotion}
+        />
+      </Box>
+    );
+  };
+
+  // Render tool chain
+  const renderToolChain = () => {
+    if (toolCalls.length === 0) return null;
+
+    return (
+      <Box marginTop={1}>
+        <ToolChain tools={toolCalls} />
+      </Box>
+    );
+  };
+
+  // Get all commands with subcommands flattened
+  const getAllCommands = (): Command[] => {
+    const baseCommands = buildCommands(
+      setMessages,
+      setShowHelp,
+      setCurrentModel,
+      setReducedMotion,
+      currentModel,
+      reducedMotion
+    );
+
+    const allCommands: Command[] = [];
+    for (const cmd of baseCommands) {
+      allCommands.push(cmd);
+      if (cmd.subcommands) {
+        allCommands.push(...cmd.subcommands);
+      }
+    }
+    return allCommands;
+  };
+
+  // Filter commands by search
+  const filteredCommands = showPalette
+    ? getAllCommands().filter((cmd) =>
+        cmd.name.toLowerCase().includes(paletteSearch.toLowerCase())
+      )
+    : [];
+
+  // Command palette component
+  const CommandPalette: React.FC = () => {
+    if (!showPalette) return null;
+
+    return (
+      <Box flexDirection="column" marginBottom={1}>
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={theme.colors.inactive}
+          paddingX={1}
+          paddingY={0}
+        >
+          {filteredCommands.length === 0 ? (
+            <Text color={theme.colors.inactive}>No commands found</Text>
+          ) : (
+            filteredCommands.slice(0, 8).map((cmd, index) => (
+              <Box
+                key={cmd.name}
+                flexDirection="row"
+                paddingY={0}
+                {...(index === selectedIndex ? { backgroundColor: theme.colors.surface } : {})}
+              >
+                <Text
+                  bold={index === selectedIndex}
+                  color={index === selectedIndex ? theme.colors.text : theme.colors.primary}
+                >
+                  {cmd.name}
+                </Text>
+                <Text color={theme.colors.inactive}> </Text>
+                <Text
+                  color={theme.colors.inactive}
+                  dimColor={index !== selectedIndex}
+                >
+                  {cmd.description}
+                </Text>
+              </Box>
+            ))
+          )}
+        </Box>
+        <Text dimColor color={theme.colors.subtle}>
+          ↑↓ navigate · Enter select · Esc close
+        </Text>
+      </Box>
+    );
+  };
+
+  // Help dialog component
+  const HelpDialog: React.FC = () => {
+    if (!showHelp) return null;
+
+    const commands = buildCommands(
+      setMessages,
+      setShowHelp,
+      setCurrentModel,
+      setReducedMotion,
+      currentModel,
+      reducedMotion
+    );
+
+    return (
+      <Box
+        flexDirection="column"
+        marginBottom={2}
+        borderStyle="round"
+        borderColor={theme.colors.primary}
+        paddingX={2}
+        paddingY={1}
+      >
+        <Text bold color={theme.colors.primary}>Axiom Commands</Text>
+        <Box marginTop={1}>
+          {commands.map((cmd) => (
+            <Box key={cmd.name} flexDirection="row" marginY={0}>
+              <Text bold color={theme.colors.secondary}>
+                {cmd.name.padEnd(15)}
+              </Text>
+              <Text color={theme.colors.text}>{cmd.description}</Text>
+            </Box>
+          ))}
+        </Box>
+        <Box marginTop={1} flexDirection="column">
+          <Text bold color={theme.colors.inactive}>Providers:</Text>
+          {PROVIDERS.map((p) => (
+            <Text key={p.id} color={theme.colors.textDim}>
+              • {p.name}: {p.envVar}
+            </Text>
+          ))}
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor color={theme.colors.subtle}>
+            [Esc] close
+          </Text>
+        </Box>
+      </Box>
+    );
+  };
+
+  // Simple input handler with command palette
+  const SimpleInput: React.FC = () => {
+    const [value, setValue] = useState("");
+    const valueRef = useRef("");
+
+    useEffect(() => {
+      valueRef.current = value;
+    }, [value]);
+
+    // Reset palette when not typing
+    useEffect(() => {
+      if (!value.startsWith("/")) {
+        setShowPalette(false);
+        setPaletteSearch("");
+      }
+    }, [value]);
+
+    useInput((input, key) => {
+      // Handle palette navigation
+      if (showPalette) {
+        if (key.upArrow || input === "k") {
+          setSelectedIndex((prev) =>
+            prev > 0 ? prev - 1 : filteredCommands.length - 1
+          );
+          return;
+        }
+        if (key.downArrow || input === "j") {
+          setSelectedIndex((prev) =>
+            prev < filteredCommands.length - 1 ? prev + 1 : 0
+          );
+          return;
+        }
+        if (key.return) {
+          const selected = filteredCommands[selectedIndex];
+          if (selected) {
+            selected.action();
+            setShowPalette(false);
+            setValue("");
+            setPaletteSearch("");
+            setSelectedIndex(0);
+          }
+          return;
+        }
+        if (key.escape) {
+          setShowPalette(false);
+          setValue("");
+          setPaletteSearch("");
+          setSelectedIndex(0);
+          return;
+        }
+      }
+
+      // Handle backspace - delete last character only
+      if (key.backspace || key.delete || input === "\x7f" || input === "\b") {
+        setValue((prev) => {
+          // Only delete if there's something to delete and it's not empty
+          if (prev.length > 0) {
+            return prev.slice(0, -1); // Remove exactly one character
+          }
+          return prev;
+        });
+        return;
+      }
+
+      // Handle return/submit
+      if (key.return) {
+        if (valueRef.current.trim()) {
+          // Check if it's a command
+          if (valueRef.current.startsWith("/")) {
+            const cmd = filteredCommands.find(
+              (c) => c.name === valueRef.current
+            );
+            if (cmd) {
+              cmd.action();
+              setValue("");
+              setPaletteSearch("");
+              setShowPalette(false);
+              return;
+            }
+          }
+          handleSubmit(valueRef.current);
+          setValue("");
+          setPaletteSearch("");
+        }
+        return;
+      }
+
+      // Handle escape
+      if (key.escape) {
+        if (showHelp) {
+          setShowHelp(false);
+          return;
+        }
+        if (showPalette) {
+          setShowPalette(false);
+          setValue("");
+          setPaletteSearch("");
+          return;
+        }
+        return;
+      }
+
+      // Regular character input
+      if (input && input.length === 1 && !key.ctrl && !key.meta && !key.backspace && !key.delete) {
+        const charCode = input.charCodeAt(0);
+        if ((charCode >= 32 && charCode <= 126) || charCode > 127) {
+          const newValue = value + input;
+          setValue(newValue);
+
+          // Show palette when typing /
+          if (newValue === "/") {
+            setShowPalette(true);
+            setSelectedIndex(0);
+            setPaletteSearch("");
+          } else if (newValue.startsWith("/")) {
+            setPaletteSearch(newValue.slice(1));
+            // Auto-select first match
+            if (filteredCommands.length > 0) {
+              setSelectedIndex(0);
+            }
+          }
+        }
+      }
+    });
+
+    return (
+      <Box flexDirection="column">
+        <Box flexDirection="row" alignItems="center">
+          <Text bold color={theme.colors.claude}>❯</Text>
+          <Text> </Text>
+          <Text color={theme.colors.text}>{value}</Text>
+          <Text color={theme.colors.cursor}>█</Text>
+        </Box>
+      </Box>
+    );
+  };
+
+  // Thinking shimmer opacity calculation
+  const thinkingOpacity = currentThinking ? (Math.sin(time / 2000) + 1) / 2 : 0;
+
+  return (
+    <Box flexDirection="column" height="100%">
+      {/* Header */}
+      <Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
+        <Box flexDirection="row" alignItems="center">
+          <Text bold color={theme.colors.primary}>▲</Text>
+          <Text> </Text>
+          <Text bold color={theme.colors.text}>Axiom</Text>
+          <Text dimColor color={theme.colors.subtle}> · </Text>
+          <Text dimColor color={theme.colors.inactive}>{currentModel}</Text>
+        </Box>
+        <Box flexDirection="row" alignItems="center" gap={2}>
+          <Text dimColor color={theme.colors.subtle}>
+            [/] commands
+          </Text>
+          <Text dimColor color={theme.colors.subtle}>
+            [Tab] reasoning
+          </Text>
+          <Text dimColor color={theme.colors.subtle}>
+            [Ctrl+V] vim
+          </Text>
+          {reducedMotion && (
+            <Text dimColor color={theme.colors.warning}>
+              [motion]
+            </Text>
+          )}
+        </Box>
+      </Box>
+
+      {/* Divider */}
+      <Box>
+        <Text dimColor color={theme.colors.borderDim}>
+          ─────────────────────────────────────────────────────────────────────────
+        </Text>
+      </Box>
+
+      {/* Messages area */}
+      <Box flexDirection="column" flexGrow={1} overflow="hidden">
+        <HelpDialog />
+        {renderHistory()}
+        {renderStreamingContent()}
+        {renderSpinnerRow()}
+        {renderToolChain()}
+        <CommandPalette />
+      </Box>
+
+      {/* Divider */}
+      <Box>
+        <Text dimColor color={theme.colors.borderDim}>
+          ─────────────────────────────────────────────────────────────────────────
+        </Text>
+      </Box>
+
+      {/* Status bar */}
+      <StatusBar
+        connectionStatus={connectionStatus}
+        isProcessing={isStreaming}
+        toolName={currentToolCall?.name}
+        reducedMotion={reducedMotion}
+        totalTokens={totalTokens}
+      />
+
+      {/* Input */}
+      <Box marginTop={1}>
+        {inputMode === "vim" ? (
+          <VimInput
+            onSubmit={handleSubmit}
+            placeholder="Message Axiom..."
+            initialValue={inputValue}
+          />
+        ) : (
+          <SimpleInput />
+        )}
+      </Box>
+    </Box>
+  );
 };
 
 export default EnhancedApp;
