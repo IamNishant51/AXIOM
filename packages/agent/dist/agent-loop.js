@@ -82,6 +82,7 @@ async function runLoop(currentContext, newMessages, config, signal, emit, stream
                 }
                 pendingMessages = [];
             }
+            // Always use the current tools reference from context (allows dynamic tool additions)
             const message = await streamAssistantResponse(currentContext, config, signal, emit, streamFn);
             newMessages.push(message);
             if (message.stopReason === "error" || message.stopReason === "aborted") {

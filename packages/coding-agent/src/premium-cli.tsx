@@ -3,19 +3,36 @@
  * Matches Claude Code CLI look and feel
  */
 
-import React, { useCallback, useRef } from "react";
+import React from "react";
 import { render } from "ink";
-import { Agent } from "@axiom/agent-core";
-import { setTheme, defaultTheme, type StatusState, type Message } from "@axiom/tui-react";
+import { Agent, type AgentTool } from "@axiom/agent-core";
+import { setTheme, defaultTheme } from "@axiom/tui-react";
 import { EnhancedApp } from "./enhanced-app.js";
 import { createSettingsManager } from "./core/settings-manager.js";
 import { createModelRegistry } from "./core/model-registry.js";
+import { createExtensionRegistry, getExtensionRegistry, extensionTools } from "./core/extensions/index.js";
+import { internetTools } from "./core/extensions/internet.js";
 import { defaultTools } from "./core/tools/index.js";
+import * as path from "node:path";
 
 // Use premium dark theme
 setTheme(defaultTheme);
 
-const MINIMAL_SYSTEM_PROMPT = `You are Axiom. Be concise. Complete tasks in one response when possible.`;
+const MINIMAL_SYSTEM_PROMPT = `You are Axiom, a powerful coding assistant with tools to help you.
+
+Built-in tools:
+- read, write, edit, bash, grep, find, ls, mkdir
+
+Internet tools:
+- web_search: Search the internet
+- fetch_url: Get content from a URL
+
+Extension tools:
+- add_extension: Add a new custom tool
+- list_extensions: See all extensions
+- remove_extension: Remove an extension
+
+Use tools when needed to complete tasks.`;
 
 // Main wrapper component that handles TTY detection
 const AxiomWrapper: React.FC<{ initialPrompt?: string }> = ({ initialPrompt }) => {
@@ -38,16 +55,33 @@ async function runSimple(prompt: string): Promise<void> {
 		process.exit(1);
 	}
 
+	// Initialize extension registry
+	const extensionsDir = path.join(
+		settings.getConfigDir().replace("/agent", ""),
+		"extensions",
+	);
+	createExtensionRegistry(extensionsDir);
+	const registry = getExtensionRegistry();
+	await registry.loadAllExtensions();
+
+	// Combine all tools
+	const allTools = [...defaultTools, ...extensionTools, ...internetTools, ...registry.getAllTools()];
+
 	const toolEvents: string[] = [];
 	const agent = new Agent({
 		initialState: {
 			systemPrompt: MINIMAL_SYSTEM_PROMPT,
 			model,
-			tools: defaultTools,
+			tools: allTools,
 			messages: [],
 		},
 		getApiKey: async () => apiKey,
 		toolExecution: "sequential",
+	});
+
+	// Subscribe to extension changes
+	registry.onToolsChange((newTools: AgentTool[]) => {
+		agent.state.tools = [...defaultTools, ...extensionTools, ...internetTools, ...newTools];
 	});
 
 	agent.subscribe((event: any) => {

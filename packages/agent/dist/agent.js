@@ -244,7 +244,8 @@ export class Agent {
         return {
             systemPrompt: this._state.systemPrompt,
             messages: this._state.messages.slice(),
-            tools: this._state.tools.slice(),
+            // Don't slice tools - keep reference so dynamic additions are picked up
+            tools: this._state.tools,
         };
     }
     createLoopConfig(options = {}) {

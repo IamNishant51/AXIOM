@@ -23,9 +23,12 @@ import {
 } from "@axiom/tui-react";
 import { createSettingsManager } from "./core/settings-manager.js";
 import { createModelRegistry } from "./core/model-registry.js";
-import { Agent } from "@axiom/agent-core";
+import { createExtensionRegistry, getExtensionRegistry, extensionTools } from "./core/extensions/index.js";
+import { internetTools } from "./core/extensions/internet.js";
+import { Agent, type AgentTool } from "@axiom/agent-core";
 import { defaultTools } from "./core/tools/index.js";
 import type { AssistantMessage, TextContent, ThinkingContent } from "@axiom/ai";
+import * as path from "node:path";
 
 // Set theme
 defaultTheme;
@@ -295,15 +298,34 @@ export const EnhancedApp: React.FC<{
       process.exit(1);
     }
 
+    // Initialize extension registry
+    const extensionsDir = path.join(
+      settings.getConfigDir().replace("/agent", ""),
+      "extensions",
+    );
+    createExtensionRegistry(extensionsDir);
+    const registry = getExtensionRegistry();
+    registry.loadAllExtensions().catch(console.error);
+
+    // Combine all tools
+    const allTools = [...defaultTools, ...extensionTools, ...internetTools, ...registry.getAllTools()];
+
     agentRef.current = new Agent({
       initialState: {
-        systemPrompt: "You are Axiom. Be concise. Complete tasks efficiently.",
+        systemPrompt: "You are Axiom, a powerful coding assistant with tools.\n\nBuilt-in: read, write, edit, bash, grep, find, ls, mkdir\nInternet: web_search, fetch_url\nExtensions: add_extension, list_extensions, remove_extension, reload_extensions",
         model,
-        tools: defaultTools,
+        tools: allTools,
         messages: [],
       },
       getApiKey: async () => apiKey,
       toolExecution: "sequential",
+    });
+
+    // Subscribe to extension changes
+    registry.onToolsChange((newTools: AgentTool[]) => {
+      if (agentRef.current) {
+        agentRef.current.state.tools = [...defaultTools, ...extensionTools, ...internetTools, ...newTools];
+      }
     });
 
     // Subscribe to agent events

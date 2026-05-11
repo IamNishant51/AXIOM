@@ -3,15 +3,22 @@
  * Axiom Coding Agent
  */
 
+import * as path from "node:path";
 import * as readline from "node:readline";
 import { getModel, getModels, getProviders } from "@axiom/ai";
-import { Agent } from "@axiom/agent-core";
+import { Agent, type AgentTool } from "@axiom/agent-core";
 import { TUI, Text, Editor, Box, Spacer, ProcessTerminal } from "@axiom/tui";
 import { createSettingsManager, type AxiomSettings, type SettingsManager } from "./core/settings-manager.js";
 import { SessionManager } from "./core/session-manager.js";
 import { createModelRegistry, ModelRegistry } from "./core/model-registry.js";
 import { createResourceLoader, ResourceLoader } from "./core/resource-loader.js";
 import { defaultTools } from "./core/tools/index.js";
+import {
+	createExtensionRegistry,
+	getExtensionRegistry,
+	extensionTools,
+} from "./core/extensions/index.js";
+import { internetTools } from "./core/extensions/internet.js";
 
 /**
  * CLI options
@@ -63,6 +70,15 @@ export class AxiomCli {
 		// Load resources
 		await this.resourceLoader.loadAll();
 
+		// Initialize extension registry and load saved extensions
+		const extensionsDir = path.join(
+			this.settings.getConfigDir().replace("/agent", ""),
+			"extensions",
+		);
+		createExtensionRegistry(extensionsDir);
+		const registry = getExtensionRegistry();
+		await registry.loadAllExtensions();
+
 		// Set up model
 		const model = options.model
 			? this.modelRegistry.resolveModel(options.model)
@@ -80,8 +96,10 @@ export class AxiomCli {
 			process.exit(1);
 		}
 
+		// Create tools list: built-in + extension tools + loaded extensions + internet tools
+		const tools = [...defaultTools, ...extensionTools, ...internetTools, ...registry.getAllTools()];
+
 		// Create agent
-		const tools = defaultTools;
 		this.agent = new Agent({
 			initialState: {
 				systemPrompt: this.buildSystemPrompt(),
@@ -91,6 +109,18 @@ export class AxiomCli {
 				messages: [],
 			},
 			getApiKey: async (provider) => this.modelRegistry.getApiKey(provider),
+		});
+
+		// Subscribe to extension changes to update agent tools dynamically
+		registry.onToolsChange((newTools: AgentTool[]) => {
+			if (this.agent) {
+				this.agent.state.tools = [
+					...defaultTools,
+					...extensionTools,
+					...internetTools,
+					...newTools,
+				];
+			}
 		});
 
 		// Subscribe to events
@@ -115,9 +145,9 @@ export class AxiomCli {
 	 * Build system prompt
 	 */
 	private buildSystemPrompt(): string {
-		return `You are Axiom, a powerful coding assistant.
+		return `You are Axiom, a powerful coding assistant with the ability to extend yourself with custom tools.
 
-You have access to tools to help you:
+You have access to built-in tools:
 - Read files (read)
 - Write files (write)
 - Execute shell commands (bash)
@@ -125,8 +155,19 @@ You have access to tools to help you:
 - Search files (grep)
 - Find files (find)
 - List directories (ls)
+- Create directories (mkdir)
 
-Be helpful, concise, and proactive. When the user asks for code, provide working solutions.`;
+You have internet access:
+- web_search: Search the internet for information
+- fetch_url: Get content from a specific URL
+
+You can also add custom tools/extensions dynamically:
+- add_extension: Add a new tool that does anything you need
+- list_extensions: See all installed extensions
+- remove_extension: Remove an extension
+- reload_extensions: Reload all extensions from disk
+
+When the user asks you to add a tool that does something specific, use the add_extension tool to create it. Be creative and helpful - if there's no tool for what the user needs, create one!`;
 	}
 
 	/**
