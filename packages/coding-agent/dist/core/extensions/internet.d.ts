@@ -1,16 +1,14 @@
 /**
  * Web Search Extension - Internet search capability for Axiom
- *
- * This extension adds a web_search tool that can search the internet.
- * It uses a simple fetch-based approach with DuckDuckGo HTML.
+ * SECURE VERSION - SSRF protection, rate limiting, and safe parsing
  */
 import type { AgentTool } from "@axiom/agent-core";
 /**
- * Web Search Tool - Search the internet
+ * Web Search Tool - Search the internet (read-only, safe)
  */
 export declare const webSearchTool: AgentTool;
 /**
- * Fetch URL Tool - Get content from a URL
+ * Fetch URL Tool - Get content from a URL (SSRF protected)
  */
 export declare const fetchUrlTool: AgentTool;
 export declare const internetTools: AgentTool[];

@@ -13,11 +13,12 @@
     "check": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
-    "@axiom/ai": "workspace:*",
     "@axiom/agent-core": "workspace:*",
+    "@axiom/ai": "workspace:*",
     "@axiom/tui": "workspace:*",
     "@axiom/tui-react": "workspace:*",
-    "@sinclair/typebox": "^0.32.0"
+    "@sinclair/typebox": "^0.32.0",
+    "ink-image": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -25,8 +26,8 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "react": "^18.0.0",
     "ink": "^4.0.0",
+    "react": "^18.0.0",
     "typescript": ">=5.0"
   }
 }

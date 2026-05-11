@@ -1,6 +1,6 @@
 /**
  * Extension Tools - Tools for managing extensions dynamically
- * Axiom Coding Agent
+ * SECURE VERSION - Protected built-in tools, enhanced validation
  */
 import type { AgentTool } from "@axiom/agent-core";
 /**
@@ -12,7 +12,7 @@ export declare const addExtensionTool: AgentTool;
  */
 export declare const listExtensionsTool: AgentTool;
 /**
- * Remove Extension Tool - Remove an installed extension
+ * Remove Extension Tool - Remove a custom extension
  */
 export declare const removeExtensionTool: AgentTool;
 /**
@@ -23,8 +23,5 @@ export declare const reloadExtensionsTool: AgentTool;
  * Get Extension Details Tool - Get details about a specific extension
  */
 export declare const getExtensionTool: AgentTool;
-/**
- * Extension management tools
- */
 export declare const extensionTools: AgentTool[];
 //# sourceMappingURL=tools.d.ts.map

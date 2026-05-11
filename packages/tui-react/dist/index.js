@@ -8,7 +8,7 @@
  *   import { Panel, SmoothSpinner, StreamedText } from '@axiom/tui-react';
  */
 // Theme system
-export { defaultTheme, lightTheme, setTheme, getTheme, useTheme, resolveColor, parseRGB, interpolateColor, toRGBColor, ERROR_RED, THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, } from "./theme/index.js";
+export { defaultTheme, lightTheme, axiomDarkTheme, axiomLightTheme, setTheme, getTheme, useTheme, resolveColor, parseRGB, interpolateColor, toRGBColor, ERROR_RED, THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, AXIOM_CAT_LOGO, AXIOM_CAT_COMPACT, } from "./theme/index.js";
 // Theme loading
 export { loadTheme, saveTheme, listThemes, createDefaultTheme, mergeTheme, } from "./theme/loadTheme.js";
 // Core components
