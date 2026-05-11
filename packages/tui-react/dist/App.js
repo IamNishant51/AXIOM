@@ -1,12 +1,13 @@
 /**
  * App.tsx - Main Layout Component
- * Premium Terminal UI - Claude Code Style
+ * Claude Code CLI Style Implementation
  */
 import React, { useCallback, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import { useTheme } from "./theme/index.js";
 import InputManager from "./components/InputManager.js";
 import StatusIndicator from "./components/StatusIndicator.js";
+// Enhanced markdown renderer - Claude Code style
 function parseMarkdown(content) {
     const lines = content.split("\n");
     const elements = [];
@@ -21,11 +22,10 @@ function parseMarkdown(content) {
                 codeLines.push(lines[i]);
                 i++;
             }
-            elements.push(React.createElement(Box, { key: i, flexDirection: "column", marginY: 1 },
-                language && (React.createElement(Text, { color: "#60A5FA" }, language)),
-                React.createElement(Text, { color: "#34D399" }, codeLines.map((l, j) => (React.createElement(Text, { key: j },
-                    l,
-                    "\n"))))));
+            // Claude Code style: code blocks with dark background feel
+            elements.push(React.createElement(Box, { key: `code-${i}`, flexDirection: "column", marginY: 1, paddingLeft: 2 },
+                language && (React.createElement(Text, { dimColor: true, color: "#60A5FA" }, language)),
+                codeLines.map((l, j) => (React.createElement(Text, { key: j, color: "#34D399" }, l)))));
             continue;
         }
         // Heading (#, ##, ###)
@@ -33,10 +33,16 @@ function parseMarkdown(content) {
         if (headingMatch) {
             const level = headingMatch[1].length;
             const text = headingMatch[2];
-            elements.push(React.createElement(Text, { key: i, bold: true, color: level === 1 ? "#60A5FA" : level === 2 ? "#A78BFA" : "#34D399" }, text));
+            const colors = ["#60A5FA", "#A78BFA", "#34D399"];
+            elements.push(React.createElement(Text, { key: i, bold: true, color: colors[level - 1] }, text));
             continue;
         }
-        // List item (- or * or 1.)
+        // Horizontal rule
+        if (line.match(/^[-*_]{3,}$/)) {
+            elements.push(React.createElement(Text, { key: i, dimColor: true, color: "#404040" }, "\u2500\u2500\u2500"));
+            continue;
+        }
+        // List item (-, *, or numbered)
         const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
         if (listMatch) {
             const indent = listMatch[1].length;
@@ -49,24 +55,18 @@ function parseMarkdown(content) {
                 React.createElement(Text, { color: "#F5F5F5" }, parseInlineMarkdown(text))));
             continue;
         }
-        // Horizontal rule
-        if (line.match(/^[-*_]{3,}$/)) {
-            elements.push(React.createElement(Text, { key: i, color: "#404040" }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"));
-            continue;
-        }
         // Regular line with inline markdown
         if (line.trim()) {
             elements.push(React.createElement(Text, { key: i, color: "#F5F5F5" }, parseInlineMarkdown(line)));
         }
         else {
-            // Empty line
             elements.push(React.createElement(Text, { key: i }, "\n"));
         }
     }
     return elements;
 }
+// Inline markdown parser
 function parseInlineMarkdown(text) {
-    // Handle inline code (`code`)
     const parts = [];
     let remaining = text;
     let keyIndex = 0;
@@ -112,17 +112,54 @@ function parseInlineMarkdown(text) {
             remaining = remaining.slice(linkMatch.index + linkMatch[0].length);
             continue;
         }
-        // No more matches, add rest
         parts.push(React.createElement(Text, { key: keyIndex++ }, remaining));
         break;
     }
     return parts.length > 0 ? React.createElement(React.Fragment, null, parts) : text;
 }
+// Tool call display - Claude Code style
+function renderToolCalls(toolCalls, theme) {
+    if (!toolCalls || toolCalls.length === 0)
+        return null;
+    return (React.createElement(Box, { flexDirection: "column", marginTop: 1 }, toolCalls.map((tc, i) => (React.createElement(Box, { key: i, flexDirection: "row", alignItems: "center" },
+        React.createElement(Text, { color: theme.colors.primary }, "\u25CF"),
+        React.createElement(Text, { color: theme.colors.textMuted }, " "),
+        React.createElement(Text, { color: theme.colors.primary, bold: true }, tc.name),
+        React.createElement(Text, { color: theme.colors.textMuted }, " - running..."))))));
+}
+// Thinking display - Claude Code style
+function renderThinking(thinking, showAllThinking, expandedThinking, msgId, theme) {
+    if (!thinking)
+        return null;
+    const isExpanded = showAllThinking || expandedThinking.has(msgId);
+    return (React.createElement(Box, { flexDirection: "column", marginBottom: 1 },
+        React.createElement(Box, { flexDirection: "row", alignItems: "center" },
+            React.createElement(Text, { color: theme.colors.secondary }, isExpanded ? "▼" : "▶"),
+            React.createElement(Text, { color: theme.colors.textMuted }, " "),
+            React.createElement(Text, { color: theme.colors.secondary, bold: true }, "Reasoning"),
+            React.createElement(Text, { color: theme.colors.textMuted }, " "),
+            React.createElement(Text, { dimColor: true, color: theme.colors.textMuted }, "[Tab]")),
+        isExpanded && (React.createElement(Box, { paddingLeft: 2, flexDirection: "column", marginTop: 1 },
+            React.createElement(Text, { color: theme.colors.textDim, italic: true }, thinking)))));
+}
+// Message bubble - Claude Code style
+function renderMessage(msg, theme, showAllThinking, expandedThinking) {
+    const isUser = msg.role === "user";
+    return (React.createElement(Box, { key: msg.id, flexDirection: "column", marginBottom: 2 },
+        React.createElement(Box, { flexDirection: "row", alignItems: "center" },
+            React.createElement(Text, { bold: true, color: isUser ? theme.colors.primary : theme.colors.accent }, isUser ? "❯" : "○"),
+            React.createElement(Text, { color: theme.colors.textMuted }, " "),
+            React.createElement(Text, { bold: true, color: theme.colors.textDim }, isUser ? "You" : "Axiom")),
+        React.createElement(Box, { paddingLeft: 2, flexDirection: "column" },
+            !isUser && renderThinking(msg.thinking, showAllThinking, expandedThinking, msg.id, theme),
+            !isUser && renderToolCalls(msg.toolCalls, theme),
+            parseMarkdown(msg.content))));
+}
 export const App = ({ messages = [], onMessage, onCommand, aiState = "idle", aiMessage, aiToolName, isStreaming = false, disabled = false, commands, }) => {
     const theme = useTheme();
     const { exit } = useApp();
     const [expandedThinking, setExpandedThinking] = useState(new Set());
-    const [showAllThinking, setShowAllThinking] = useState(true);
+    const [showAllThinking, setShowAllThinking] = useState(false); // Default collapsed
     // Toggle thinking expansion for a specific message
     const toggleThinking = (msgId) => {
         setExpandedThinking((prev) => {
@@ -136,10 +173,11 @@ export const App = ({ messages = [], onMessage, onCommand, aiState = "idle", aiM
             return next;
         });
     };
-    // Keyboard handler for toggling thinking display
+    // Keyboard handler for toggling thinking (Tab key)
     useInput((input, key) => {
-        // Press 't' to toggle all thinking visibility when input is empty
-        if (input === "t" && !disabled && !isStreaming) {
+        if (disabled || isStreaming)
+            return;
+        if (key.tab) {
             setShowAllThinking((prev) => !prev);
         }
     });
@@ -147,7 +185,6 @@ export const App = ({ messages = [], onMessage, onCommand, aiState = "idle", aiM
     const handleSubmit = useCallback((value) => {
         if (value.startsWith("/")) {
             if (value === "/clear") {
-                // Parent handles clear via messages prop update
                 onCommand?.("clear");
             }
             else if (value === "/exit") {
@@ -163,49 +200,21 @@ export const App = ({ messages = [], onMessage, onCommand, aiState = "idle", aiM
     // Render history
     const renderHistory = () => {
         if (messages.length === 0) {
-            return (React.createElement(Text, { color: theme.colors.textMuted }, "Type a message to start..."));
+            return (React.createElement(Text, { dimColor: true, color: theme.colors.textMuted }, "Type a message..."));
         }
-        return messages.map((msg) => (React.createElement(Box, { key: msg.id, flexDirection: "column", marginBottom: 1 },
-            React.createElement(Box, { flexDirection: "row" },
-                React.createElement(Text, { bold: true, color: msg.role === "user" ? theme.colors.primary : theme.colors.accent }, msg.role === "user" ? "❯" : "○"),
-                React.createElement(Text, { color: theme.colors.textMuted }, " "),
-                React.createElement(Text, { bold: true, color: theme.colors.textDim }, msg.role === "user" ? "You" : "Axiom")),
-            React.createElement(Box, { paddingLeft: 2, flexDirection: "column" },
-                msg.thinking && (React.createElement(Box, { flexDirection: "column" },
-                    React.createElement(Box, { flexDirection: "row" },
-                        React.createElement(Text, { color: theme.colors.secondary, bold: true },
-                            "[",
-                            showAllThinking || expandedThinking.has(msg.id) ? "▼" : "▶",
-                            " Thinking]"),
-                        React.createElement(Text, { color: theme.colors.textMuted }, " "),
-                        React.createElement(Text, { color: theme.colors.textMuted }, "[Press 't' to toggle all]")),
-                    (showAllThinking || expandedThinking.has(msg.id)) && (React.createElement(Box, { paddingLeft: 2, flexDirection: "column", marginTop: 1 },
-                        React.createElement(Text, { color: theme.colors.secondary, italic: true }, msg.thinking))))),
-                msg.toolCalls?.map((tc, i) => (React.createElement(Text, { key: i, color: theme.colors.primary },
-                    "[",
-                    tc.name,
-                    "...]"))),
-                parseMarkdown(msg.content)))));
+        return messages.map((msg) => renderMessage(msg, theme, showAllThinking, expandedThinking));
     };
     return (React.createElement(Box, { flexDirection: "column", paddingX: 1 },
-        React.createElement(Box, { flexDirection: "row" },
-            React.createElement(Text, { color: theme.colors.primary }, "\u256D"),
-            React.createElement(Text, { color: theme.colors.borderDim }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"),
-            React.createElement(Text, { color: theme.colors.primary }, "\u256E")),
-        React.createElement(Box, { flexDirection: "row" },
-            React.createElement(Text, { color: theme.colors.primary }, "\u2502"),
-            React.createElement(Text, null, " "),
-            React.createElement(Text, { bold: true, color: theme.colors.primary }, "\uD83E\uDD16 Axiom"),
-            React.createElement(Text, { color: theme.colors.textMuted }, " v0.1.0"),
-            React.createElement(Text, { color: theme.colors.borderDim }, "                                           "),
-            React.createElement(Text, { color: theme.colors.primary }, "\u2502")),
-        React.createElement(Box, { flexDirection: "row" },
-            React.createElement(Text, { color: theme.colors.primary }, "\u2570"),
-            React.createElement(Text, { color: theme.colors.borderDim }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"),
-            React.createElement(Text, { color: theme.colors.primary }, "\u256F")),
+        React.createElement(Box, { flexDirection: "row", justifyContent: "space-between", marginBottom: 1 },
+            React.createElement(Box, { flexDirection: "row", alignItems: "center" },
+                React.createElement(Text, { bold: true, color: theme.colors.primary }, "\u25B2"),
+                React.createElement(Text, null, " "),
+                React.createElement(Text, { bold: true, color: theme.colors.text }, "Axiom"),
+                React.createElement(Text, { color: theme.colors.textMuted }, " v0.1.0")),
+            React.createElement(Text, { color: theme.colors.textMuted }, "minimax-m2.5-free")),
+        React.createElement(Text, { dimColor: true, color: theme.colors.borderDim }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"),
         React.createElement(Box, { flexDirection: "column", minHeight: 10 }, renderHistory()),
-        React.createElement(Box, { flexDirection: "row" },
-            React.createElement(Text, { color: theme.colors.borderDim }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")),
+        React.createElement(Text, { dimColor: true, color: theme.colors.borderDim }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"),
         React.createElement(StatusIndicator, { state: aiState, message: aiMessage, toolName: aiToolName, size: "small" }),
         React.createElement(InputManager, { onSubmit: handleSubmit, placeholder: "Message Axiom...", commands: commands, disabled: disabled || isStreaming })));
 };

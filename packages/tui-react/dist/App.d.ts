@@ -1,6 +1,6 @@
 /**
  * App.tsx - Main Layout Component
- * Premium Terminal UI - Claude Code Style
+ * Claude Code CLI Style Implementation
  */
 import React from "react";
 import { StatusState } from "./components/StatusIndicator.js";
@@ -16,7 +16,7 @@ export interface Message {
         result?: string;
     }>;
 }
-export interface AppProps {
+export declare const App: React.FC<{
     messages?: Message[];
     onMessage?: (message: string) => void;
     onCommand?: (command: string) => void;
@@ -30,7 +30,6 @@ export interface AppProps {
         description: string;
         action: string;
     }>;
-}
-export declare const App: React.FC<AppProps>;
+}>;
 export default App;
 //# sourceMappingURL=App.d.ts.map

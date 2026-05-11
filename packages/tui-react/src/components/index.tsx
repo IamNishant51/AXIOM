@@ -24,6 +24,40 @@ export type { InputManagerProps, Command } from "./InputManager.js";
 export { InteractiveMenu, useMenuInput } from "./InteractiveMenu.js";
 export type { InteractiveMenuProps, MenuItem } from "./InteractiveMenu.js";
 
+// New advanced components
+export { StreamingResponse, StreamingThinking } from "./StreamingResponse.js";
+
+export { ToolOutput, ToolChain } from "./ToolOutput.js";
+
+export { DiffView, createSimpleDiff } from "./DiffView.js";
+export type { DiffLine, DiffChange, DiffViewProps } from "./DiffView.js";
+
+export { MarkdownRenderer } from "./MarkdownRenderer.js";
+
+// Phase 3 - Interaction & UX
+export { TranscriptView } from "./TranscriptView.js";
+export type { TranscriptMessage } from "./TranscriptView.js";
+
+export { VimInput } from "./VimInput.js";
+export type { VimMode } from "./VimInput.js";
+
+// Phase 4 - Panel & Layout
+export { PermissionDialog, PermissionManager } from "./PermissionDialog.js";
+export type { PermissionType, PermissionDialogProps } from "./PermissionDialog.js";
+
+export { StatusBar, CompactStatus } from "./StatusBar.js";
+export type { StatusBarProps } from "./StatusBar.js";
+
+// Phase 5 - Advanced Features
+export { SplitPane, TabContainer } from "./SplitPane.js";
+export type { SplitDirection, SplitPaneProps, TabItem, TabContainerProps } from "./SplitPane.js";
+
+export { ScrollBox } from "./ScrollBox.js";
+export type { ScrollBoxProps } from "./ScrollBox.js";
+
+export { CopyButton, CopyButtonRow } from "./CopyButton.js";
+export type { CopyButtonProps } from "./CopyButton.js";
+
 // Additional utility components
 import React from "react";
 import { Box, Text } from "ink";

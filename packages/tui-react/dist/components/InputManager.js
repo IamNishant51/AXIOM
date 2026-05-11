@@ -1,8 +1,8 @@
 /**
- * InputManager Component - Premium command input with / palette
- * Simple, robust implementation
+ * InputManager Component - Claude Code CLI Style
+ * Clean, minimal input with proper styling and comprehensive backspace support
  */
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../theme/index.js";
 const DEFAULT_COMMANDS = [
@@ -10,11 +10,28 @@ const DEFAULT_COMMANDS = [
     { name: "/help", description: "Show commands", action: "help" },
     { name: "/exit", description: "Exit", action: "exit" },
 ];
+/**
+ * Check if character is a backspace signal
+ */
+function isBackspace(input, key) {
+    if (key.backspace || key.delete)
+        return true;
+    // Common backspace escape sequences
+    const code = input.charCodeAt(0);
+    return code === 127 || code === 8;
+}
 export const InputManager = ({ onSubmit, placeholder = "Message Axiom...", commands = DEFAULT_COMMANDS, disabled = false, }) => {
     const theme = useTheme();
     const [input, setInput] = useState("");
     const [showPalette, setShowPalette] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const inputBufferRef = useRef("");
+    // Clear input buffer on submit
+    useEffect(() => {
+        if (!disabled && input === "") {
+            inputBufferRef.current = "";
+        }
+    }, [input, disabled]);
     const filteredCommands = showPalette
         ? commands.filter((cmd) => cmd.name.toLowerCase().includes(input.toLowerCase().slice(1)))
         : [];
@@ -22,7 +39,7 @@ export const InputManager = ({ onSubmit, placeholder = "Message Axiom...", comma
     useInput((inputChar, key) => {
         if (disabled)
             return;
-        // Palette navigation
+        // Palette navigation mode
         if (showPalette) {
             if (key.upArrow || inputChar === "k") {
                 setSelectedIndex((prev) => prev > 0 ? prev - 1 : filteredCommands.length - 1);
@@ -46,23 +63,18 @@ export const InputManager = ({ onSubmit, placeholder = "Message Axiom...", comma
                 setInput("");
                 return;
             }
-            // Handle backspace in palette mode - delete character or close palette if empty
-            if (key.backspace || key.delete || inputChar === "\x7f" || inputChar === "\b" || inputChar === "") {
-                if (input.length > 1) {
-                    setInput((prev) => prev.slice(0, -1));
-                }
-                else {
-                    setShowPalette(false);
-                    setInput("");
-                }
-                return;
-            }
-            // If typing regular chars, close palette
-            if (inputChar && !key.escape) {
-                setShowPalette(false);
-            }
         }
-        // Regular input handling
+        // Handle backspace - comprehensive coverage for all terminal types
+        if (isBackspace(inputChar, key)) {
+            setInput((prev) => {
+                if (prev.length > 0) {
+                    return prev.slice(0, -1);
+                }
+                return prev;
+            });
+            return;
+        }
+        // Handle Enter/Submit
         if (key.return) {
             const value = input.trim();
             if (value) {
@@ -71,28 +83,31 @@ export const InputManager = ({ onSubmit, placeholder = "Message Axiom...", comma
                     setSelectedIndex(0);
                 }
                 else {
+                    const submittedValue = input;
                     setInput("");
-                    onSubmit(value);
+                    onSubmit(submittedValue);
                 }
             }
+            return;
         }
-        else if (key.backspace || key.delete || inputChar === "\x7f" || inputChar === "\b" || inputChar === "") {
-            // Handle backspace from all terminal types:
-            // - key.backspace: Ink's built-in backspace detection
-            // - key.delete: Delete key
-            // - \x7f: DEL character (some terminals)
-            // - \b: Backspace character
-            // - : Unicode backspace
-            if (input.length > 0) {
-                setInput((prev) => prev.slice(0, -1));
+        // Handle Escape - exit palette mode
+        if (key.escape) {
+            if (showPalette) {
+                setShowPalette(false);
+                setInput("");
             }
+            return;
         }
-        else if (inputChar && inputChar.length === 1) {
+        // Handle regular character input
+        if (inputChar && inputChar.length === 1) {
             // Start palette if typing /
             if (inputChar === "/" && !showPalette) {
                 setShowPalette(true);
                 setSelectedIndex(0);
                 setInput("/");
+            }
+            else if (showPalette) {
+                setInput((prev) => prev + inputChar);
             }
             else {
                 setInput((prev) => prev + inputChar);
@@ -106,10 +121,10 @@ export const InputManager = ({ onSubmit, placeholder = "Message Axiom...", comma
                 " ",
                 cmd.description)))))),
         React.createElement(Box, { flexDirection: "row", alignItems: "center" },
-            React.createElement(Text, { bold: true, color: theme.colors.primary }, theme.typography.cursor),
+            React.createElement(Text, { bold: true, color: theme.colors.secondary }, "\u276F"),
             React.createElement(Text, null, " "),
-            disabled ? (React.createElement(Text, { color: theme.colors.textMuted }, placeholder)) : (React.createElement(React.Fragment, null,
-                React.createElement(Text, { color: theme.colors.text }, input),
+            disabled ? (React.createElement(Text, { dimColor: true, color: theme.colors.textMuted }, placeholder)) : (React.createElement(React.Fragment, null,
+                React.createElement(Text, { bold: true, color: theme.colors.text }, input),
                 React.createElement(Text, { color: theme.colors.cursor }, "\u2588"))))));
 };
 export default InputManager;

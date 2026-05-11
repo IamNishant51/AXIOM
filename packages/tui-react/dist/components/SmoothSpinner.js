@@ -1,69 +1,75 @@
 /**
- * SmoothSpinner Component - Premium 60fps Braille animation
- * Uses smooth Braille pattern characters for fluid loading state
+ * SmoothSpinner Component - Enhanced animation like Claude Code
+ * Multiple spinner styles with different speeds
  */
 import React, { useState, useEffect } from "react";
 import { Text, Box } from "ink";
 import { useTheme } from "../theme/index.js";
-// Premium Braille spinner frames - smooth, elegant motion
+// Premium Braille spinner frames
 const SPINNER_FRAMES = {
-    small: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+    small: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"],
     medium: ["⠋", "⠐", "⠑", "⠡", "⠢", "⠣", "⠤", "⠥", "⠦", "⠧", "⠨", "⠩"],
-    large: [
-        "⠁⠂⠄⡀⢀⠠⠐⠈ ",
-        " ⠂⠄⡀⢀⠠⠐⠈⠐",
-        "  ⠄⡀⢀⠠⠐⠈⠐⠈",
-        "   ⡀⢀⠠⠐⠈⠐⠈ ",
-        "    ⠠⠐⠈⠐⠈  ",
-        "     ⠐⠈⠐     ",
-        "      ⠈       ",
-        "     ⠐⠈⠐     ",
-        "    ⠠⠐⠈⠐⠈ ",
-        "   ⡀⢀⠠⠐⠈⠐⠈",
-        "  ⠄⡀⢀⠠⠐⠈⠐⠈",
-        " ⠂⠄⡀⢀⠠⠐⠈⠐",
-    ],
+    large: ["⠁⠂⠄", " ⠂⠄", "  ⠄", "   ⠄", "    ⠠", "     ⠐", "      ⠈", "     ⠐"],
 };
-// Alternative: Dot matrix spinner for extra premium feel
-const DOT_SPINNER = ["⠋", "⠙", "⠚", "⠛", "⠜", "⠝", "⠞", "⠟"];
-export const SmoothSpinner = ({ size = "medium", label = "Loading", color, }) => {
+// Thinking spinner (subtle, slower)
+const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+// Working spinner (more active)
+const WORKING_FRAMES = ["◐", "◑", "◒", "◓", "◔", "◕"];
+// Speed configurations (ms per frame)
+const SPEED_CONFIG = {
+    slow: 120,
+    normal: 60,
+    fast: 30,
+};
+export const SmoothSpinner = ({ type = "thinking", size = "medium", label, color, speed = "normal", reducedMotion = false, }) => {
     const theme = useTheme();
     const [frame, setFrame] = useState(0);
-    const [dotFrame, setDotFrame] = useState(0);
-    const frames = SPINNER_FRAMES[size];
-    const frameCount = frames.length;
-    const dotFrameCount = DOT_SPINNER.length;
-    // 60fps equivalent - ~16ms per frame
-    const FRAME_DELAY = 16;
-    // Use useEffect with proper timing for 60fps
+    const frames = type === "thinking" ? THINKING_FRAMES : type === "working" ? WORKING_FRAMES : SPINNER_FRAMES[size];
+    const frameDelay = SPEED_CONFIG[speed];
+    // Animation frame
     useEffect(() => {
-        let animationId;
-        let lastTime = Date.now();
-        const animate = () => {
-            const now = Date.now();
-            const elapsed = now - lastTime;
-            if (elapsed >= FRAME_DELAY) {
-                setFrame((prev) => (prev + 1) % frameCount);
-                setDotFrame((prev) => (prev + 1) % dotFrameCount);
-                lastTime = now;
-            }
-            animationId = setTimeout(animate, FRAME_DELAY);
-        };
-        animationId = setTimeout(animate, FRAME_DELAY);
-        return () => {
-            clearTimeout(animationId);
-        };
-    }, [frameCount, dotFrameCount]);
+        if (reducedMotion) {
+            setFrame(0);
+            return;
+        }
+        const interval = setInterval(() => {
+            setFrame((prev) => (prev + 1) % frames.length);
+        }, frameDelay);
+        return () => clearInterval(interval);
+    }, [frameDelay, frames.length, reducedMotion]);
     const spinnerColor = color || theme.colors.primary;
-    const dotColor = theme.colors.textMuted;
+    // Thinking type - subtle with label
+    if (type === "thinking") {
+        return (React.createElement(Box, { flexDirection: "row", alignItems: "center" },
+            React.createElement(Text, { color: spinnerColor }, frames[frame]),
+            label && (React.createElement(React.Fragment, null,
+                React.createElement(Text, null, " "),
+                React.createElement(Text, { color: theme.colors.textMuted }, label)))));
+    }
+    // Working type - more prominent
+    if (type === "working") {
+        return (React.createElement(Box, { flexDirection: "row", alignItems: "center" },
+            React.createElement(Text, { bold: true, color: spinnerColor }, frames[frame]),
+            label && (React.createElement(React.Fragment, null,
+                React.createElement(Text, null, " "),
+                React.createElement(Text, { color: theme.colors.textDim }, label)))));
+    }
+    // Default loading spinner
     return (React.createElement(Box, { flexDirection: "row", alignItems: "center" },
-        React.createElement(Text, { color: spinnerColor, bold: true }, DOT_SPINNER[dotFrame]),
-        size !== "small" && (React.createElement(React.Fragment, null,
-            React.createElement(Text, null, " "),
-            React.createElement(Text, { color: dotColor }, frames[frame]))),
+        React.createElement(Text, { color: spinnerColor, bold: true }, frames[frame]),
         label && (React.createElement(React.Fragment, null,
             React.createElement(Text, null, " "),
-            React.createElement(Text, { color: theme.colors.textDim }, label),
-            React.createElement(Text, { color: dotColor }, dotFrame % 2 === 0 ? "..." : dotFrame % 3 === 0 ? "   " : ".  ")))));
+            React.createElement(Text, { color: theme.colors.textDim }, label)))));
+};
+// Compact indicator for status bar
+export const StatusIndicatorDot = ({ isActive, label }) => {
+    const theme = useTheme();
+    if (!isActive)
+        return null;
+    return (React.createElement(Box, { flexDirection: "row", alignItems: "center" },
+        React.createElement(Text, { color: theme.colors.accent }, "\u25CF"),
+        label && (React.createElement(React.Fragment, null,
+            React.createElement(Text, null, " "),
+            React.createElement(Text, { color: theme.colors.textMuted }, label)))));
 };
 export default SmoothSpinner;

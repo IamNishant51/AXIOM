@@ -16,6 +16,25 @@ export { InputManager } from "./InputManager.js";
 export type { InputManagerProps, Command } from "./InputManager.js";
 export { InteractiveMenu, useMenuInput } from "./InteractiveMenu.js";
 export type { InteractiveMenuProps, MenuItem } from "./InteractiveMenu.js";
+export { StreamingResponse, StreamingThinking } from "./StreamingResponse.js";
+export { ToolOutput, ToolChain } from "./ToolOutput.js";
+export { DiffView, createSimpleDiff } from "./DiffView.js";
+export type { DiffLine, DiffChange, DiffViewProps } from "./DiffView.js";
+export { MarkdownRenderer } from "./MarkdownRenderer.js";
+export { TranscriptView } from "./TranscriptView.js";
+export type { TranscriptMessage } from "./TranscriptView.js";
+export { VimInput } from "./VimInput.js";
+export type { VimMode } from "./VimInput.js";
+export { PermissionDialog, PermissionManager } from "./PermissionDialog.js";
+export type { PermissionType, PermissionDialogProps } from "./PermissionDialog.js";
+export { StatusBar, CompactStatus } from "./StatusBar.js";
+export type { StatusBarProps } from "./StatusBar.js";
+export { SplitPane, TabContainer } from "./SplitPane.js";
+export type { SplitDirection, SplitPaneProps, TabItem, TabContainerProps } from "./SplitPane.js";
+export { ScrollBox } from "./ScrollBox.js";
+export type { ScrollBoxProps } from "./ScrollBox.js";
+export { CopyButton, CopyButtonRow } from "./CopyButton.js";
+export type { CopyButtonProps } from "./CopyButton.js";
 import React from "react";
 /**
  * Divider - Clean visual separator

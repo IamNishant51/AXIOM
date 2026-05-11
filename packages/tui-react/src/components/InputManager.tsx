@@ -1,9 +1,9 @@
 /**
- * InputManager Component - Premium command input with / palette
- * Simple, robust implementation
+ * InputManager Component - Claude Code CLI Style
+ * Clean, minimal input with proper styling and comprehensive backspace support
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../theme/index.js";
 
@@ -26,6 +26,16 @@ const DEFAULT_COMMANDS: Command[] = [
 	{ name: "/exit", description: "Exit", action: "exit" },
 ];
 
+/**
+ * Check if character is a backspace signal
+ */
+function isBackspace(input: string, key: any): boolean {
+	if (key.backspace || key.delete) return true;
+	// Common backspace escape sequences
+	const code = input.charCodeAt(0);
+	return code === 127 || code === 8;
+}
+
 export const InputManager: React.FC<InputManagerProps> = ({
 	onSubmit,
 	placeholder = "Message Axiom...",
@@ -36,6 +46,14 @@ export const InputManager: React.FC<InputManagerProps> = ({
 	const [input, setInput] = useState("");
 	const [showPalette, setShowPalette] = useState(false);
 	const [selectedIndex, setSelectedIndex] = useState(0);
+	const inputBufferRef = useRef("");
+
+	// Clear input buffer on submit
+	useEffect(() => {
+		if (!disabled && input === "") {
+			inputBufferRef.current = "";
+		}
+	}, [input, disabled]);
 
 	const filteredCommands = showPalette
 		? commands.filter((cmd) =>
@@ -47,7 +65,7 @@ export const InputManager: React.FC<InputManagerProps> = ({
 	useInput((inputChar, key) => {
 		if (disabled) return;
 
-		// Palette navigation
+		// Palette navigation mode
 		if (showPalette) {
 			if (key.upArrow || inputChar === "k") {
 				setSelectedIndex((prev) =>
@@ -75,23 +93,20 @@ export const InputManager: React.FC<InputManagerProps> = ({
 				setInput("");
 				return;
 			}
-			// Handle backspace in palette mode - delete character or close palette if empty
-			if (key.backspace || key.delete || inputChar === "\x7f" || inputChar === "\b" || inputChar === "") {
-				if (input.length > 1) {
-					setInput((prev) => prev.slice(0, -1));
-				} else {
-					setShowPalette(false);
-					setInput("");
-				}
-				return;
-			}
-			// If typing regular chars, close palette
-			if (inputChar && !key.escape) {
-				setShowPalette(false);
-			}
 		}
 
-		// Regular input handling
+		// Handle backspace - comprehensive coverage for all terminal types
+		if (isBackspace(inputChar, key)) {
+			setInput((prev) => {
+				if (prev.length > 0) {
+					return prev.slice(0, -1);
+				}
+				return prev;
+			});
+			return;
+		}
+
+		// Handle Enter/Submit
 		if (key.return) {
 			const value = input.trim();
 			if (value) {
@@ -99,26 +114,32 @@ export const InputManager: React.FC<InputManagerProps> = ({
 					setShowPalette(true);
 					setSelectedIndex(0);
 				} else {
+					const submittedValue = input;
 					setInput("");
-					onSubmit(value);
+					onSubmit(submittedValue);
 				}
 			}
-		} else if (key.backspace || key.delete || inputChar === "\x7f" || inputChar === "\b" || inputChar === "") {
-			// Handle backspace from all terminal types:
-			// - key.backspace: Ink's built-in backspace detection
-			// - key.delete: Delete key
-			// - \x7f: DEL character (some terminals)
-			// - \b: Backspace character
-			// - : Unicode backspace
-			if (input.length > 0) {
-				setInput((prev) => prev.slice(0, -1));
+			return;
+		}
+
+		// Handle Escape - exit palette mode
+		if (key.escape) {
+			if (showPalette) {
+				setShowPalette(false);
+				setInput("");
 			}
-		} else if (inputChar && inputChar.length === 1) {
+			return;
+		}
+
+		// Handle regular character input
+		if (inputChar && inputChar.length === 1) {
 			// Start palette if typing /
 			if (inputChar === "/" && !showPalette) {
 				setShowPalette(true);
 				setSelectedIndex(0);
 				setInput("/");
+			} else if (showPalette) {
+				setInput((prev) => prev + inputChar);
 			} else {
 				setInput((prev) => prev + inputChar);
 			}
@@ -145,15 +166,19 @@ export const InputManager: React.FC<InputManagerProps> = ({
 				</Box>
 			)}
 
-			{/* Input Line */}
+			{/* Input Line - Claude Code style */}
 			<Box flexDirection="row" alignItems="center">
-				<Text bold color={theme.colors.primary}>{theme.typography.cursor}</Text>
+				<Text bold color={theme.colors.secondary}>❯</Text>
 				<Text> </Text>
 				{disabled ? (
-					<Text color={theme.colors.textMuted}>{placeholder}</Text>
+					<Text dimColor color={theme.colors.textMuted}>
+						{placeholder}
+					</Text>
 				) : (
 					<>
-						<Text color={theme.colors.text}>{input}</Text>
+						<Text bold color={theme.colors.text}>
+							{input}
+						</Text>
 						<Text color={theme.colors.cursor}>█</Text>
 					</>
 				)}

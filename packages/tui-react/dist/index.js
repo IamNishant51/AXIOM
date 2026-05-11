@@ -9,8 +9,20 @@
  */
 // Theme system
 export { defaultTheme, lightTheme, setTheme, getTheme, useTheme, } from "./theme/index.js";
+// Theme loading
+export { loadTheme, saveTheme, listThemes, createDefaultTheme, mergeTheme, } from "./theme/loadTheme.js";
 // Core components
-export { Panel, SmoothSpinner, StreamedText, StaticText, StreamedResponse, StaticResponse as StaticMessage, StatusIndicator, InputManager, InteractiveMenu, useMenuInput, } from "./components/index.js";
+export { Panel, SmoothSpinner, StreamedText, StaticText, StreamedResponse, StreamingResponse, StreamingThinking, StaticResponse as StaticMessage, StatusIndicator, InputManager, InteractiveMenu, useMenuInput, } from "./components/index.js";
+// New advanced components
+export { DiffView, ToolOutput, ToolChain, MarkdownRenderer, createSimpleDiff, } from "./components/index.js";
+// Phase 3 - Interaction & UX
+export { TranscriptView, VimInput, } from "./components/index.js";
+// Phase 4 - Panel & Layout
+export { PermissionDialog, PermissionManager, StatusBar, CompactStatus, } from "./components/index.js";
+// Phase 5 - Advanced Features
+export { SplitPane, TabContainer, } from "./components/index.js";
+// Hooks
+export { useStreaming, useScrollback, } from "./hooks/index.js";
 // Main App component
 export { App, default as AppDefault } from "./App.js";
 // Utility components

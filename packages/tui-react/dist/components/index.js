@@ -9,6 +9,21 @@ export { StreamedResponse, StaticResponse } from "./StreamedResponse.js";
 export { StatusIndicator } from "./StatusIndicator.js";
 export { InputManager } from "./InputManager.js";
 export { InteractiveMenu, useMenuInput } from "./InteractiveMenu.js";
+// New advanced components
+export { StreamingResponse, StreamingThinking } from "./StreamingResponse.js";
+export { ToolOutput, ToolChain } from "./ToolOutput.js";
+export { DiffView, createSimpleDiff } from "./DiffView.js";
+export { MarkdownRenderer } from "./MarkdownRenderer.js";
+// Phase 3 - Interaction & UX
+export { TranscriptView } from "./TranscriptView.js";
+export { VimInput } from "./VimInput.js";
+// Phase 4 - Panel & Layout
+export { PermissionDialog, PermissionManager } from "./PermissionDialog.js";
+export { StatusBar, CompactStatus } from "./StatusBar.js";
+// Phase 5 - Advanced Features
+export { SplitPane, TabContainer } from "./SplitPane.js";
+export { ScrollBox } from "./ScrollBox.js";
+export { CopyButton, CopyButtonRow } from "./CopyButton.js";
 // Additional utility components
 import React from "react";
 import { Box, Text } from "ink";

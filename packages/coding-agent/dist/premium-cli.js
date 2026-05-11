@@ -1,127 +1,21 @@
 /**
- * Premium CLI - Using new tui-react App component
+ * Premium CLI - Using new EnhancedApp component
  * Matches Claude Code CLI look and feel
  */
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React from "react";
 import { render } from "ink";
 import { Agent } from "@axiom/agent-core";
-import { setTheme, defaultTheme, App } from "@axiom/tui-react";
+import { setTheme, defaultTheme } from "@axiom/tui-react";
+import { EnhancedApp } from "./enhanced-app.js";
 import { createSettingsManager } from "./core/settings-manager.js";
 import { createModelRegistry } from "./core/model-registry.js";
-import { SessionManager } from "./core/session-manager.js";
 import { defaultTools } from "./core/tools/index.js";
 // Use premium dark theme
 setTheme(defaultTheme);
 const MINIMAL_SYSTEM_PROMPT = `You are Axiom. Be concise. Complete tasks in one response when possible.`;
-const COMMANDS = [
-    { name: "/clear", description: "Clear conversation", action: "clear" },
-    { name: "/help", description: "Show commands", action: "help" },
-    { name: "/exit", description: "Exit", action: "exit" },
-];
-// Main App component that wraps everything
-const AxiomApp = () => {
-    const [messages, setMessages] = useState([]);
-    const [aiState, setAiState] = useState("idle");
-    const [aiMessage, setAiMessage] = useState("");
-    const [aiToolName, setAiToolName] = useState("");
-    const [isStreaming, setIsStreaming] = useState(false);
-    const [inputValue, setInputValue] = useState("");
-    const agentRef = useRef(null);
-    const sessionManagerRef = useRef(null);
-    // Initialize once
-    useEffect(() => {
-        const settings = createSettingsManager();
-        const modelRegistry = createModelRegistry(settings);
-        const model = modelRegistry.getDefaultModel();
-        const apiKey = modelRegistry.getApiKey(model?.provider || "opencode");
-        if (!apiKey) {
-            console.error("No API key found. Set OPENCODE_API_KEY.");
-            process.exit(1);
-        }
-        sessionManagerRef.current = new SessionManager();
-        agentRef.current = createAgent(apiKey, model);
-    }, []);
-    const createAgent = (apiKey, model) => {
-        const agent = new Agent({
-            initialState: {
-                systemPrompt: MINIMAL_SYSTEM_PROMPT,
-                model,
-                tools: defaultTools,
-                messages: [],
-            },
-            getApiKey: async () => apiKey,
-            toolExecution: "sequential",
-        });
-        agent.subscribe((event) => {
-            if (event.type === "tool_execution_start") {
-                setAiState("working");
-                setAiMessage("Running");
-                setAiToolName(event.toolName);
-            }
-            if (event.type === "tool_execution_end") {
-                setAiState("thinking");
-                setAiMessage("Thinking");
-                setAiToolName("");
-            }
-        });
-        return agent;
-    };
-    const handleMessage = useCallback(async (text) => {
-        if (!agentRef.current)
-            return;
-        // Add user message
-        const userMsg = {
-            id: `msg-${Date.now()}`,
-            role: "user",
-            content: text,
-            timestamp: Date.now(),
-        };
-        setMessages(prev => [...prev, userMsg]);
-        setInputValue("");
-        // Set thinking state
-        setAiState("thinking");
-        setAiMessage("Thinking");
-        setIsStreaming(true);
-        try {
-            await agentRef.current.prompt(text);
-            // Get response
-            const allMessages = agentRef.current.state.messages;
-            const assistantMsgs = allMessages.filter((m) => m.role === "assistant");
-            const lastMsg = assistantMsgs[assistantMsgs.length - 1];
-            const textContent = lastMsg?.content?.find((c) => c.type === "text");
-            const thinkingContent = lastMsg?.content?.find((c) => c.type === "thinking");
-            const assistantMsg = {
-                id: `msg-${Date.now()}`,
-                role: "assistant",
-                content: textContent?.text || "",
-                timestamp: Date.now(),
-                thinking: thinkingContent?.thinking,
-            };
-            setMessages(prev => [...prev, assistantMsg]);
-            setAiState("success");
-            setAiMessage("Done");
-            setTimeout(() => {
-                setAiState("idle");
-                setAiMessage("");
-            }, 1500);
-        }
-        catch (error) {
-            setAiState("error");
-            setAiMessage("Error");
-            setTimeout(() => setAiState("idle"), 2000);
-        }
-        setIsStreaming(false);
-    }, []);
-    const handleCommand = useCallback((cmd) => {
-        switch (cmd) {
-            case "clear":
-                setMessages([]);
-                break;
-            case "exit":
-                process.exit(0);
-        }
-    }, []);
-    return (React.createElement(App, { messages: messages, onMessage: handleMessage, onCommand: handleCommand, aiState: aiState, aiMessage: aiMessage, aiToolName: aiToolName, isStreaming: isStreaming, commands: COMMANDS }));
+// Main wrapper component that handles TTY detection
+const AxiomWrapper = ({ initialPrompt }) => {
+    return React.createElement(EnhancedApp, { initialPrompt: initialPrompt });
 };
 // Non-TTY simple version
 async function runSimple(prompt) {
@@ -182,6 +76,6 @@ export async function runPremiumCli(prompt) {
         await runSimple(prompt);
         return;
     }
-    render(React.createElement(AxiomApp, null));
+    render(React.createElement(AxiomWrapper, { initialPrompt: prompt }));
 }
 //# sourceMappingURL=premium-cli.js.map

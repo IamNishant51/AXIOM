@@ -1,6 +1,6 @@
 /**
  * App.tsx - Main Layout Component
- * Premium Terminal UI - Claude Code Style
+ * Claude Code CLI Style Implementation
  */
 
 import React, { useCallback, useState } from "react";
@@ -18,13 +18,7 @@ export interface Message {
 	toolCalls?: Array<{ name: string; args: any; result?: string }>;
 }
 
-// Simple markdown renderer for terminal
-interface MarkdownSegment {
-	type: "text" | "bold" | "italic" | "code" | "codeblock" | "list" | "link" | "heading";
-	content: string;
-	language?: string;
-}
-
+// Enhanced markdown renderer - Claude Code style
 function parseMarkdown(content: string): React.ReactNode[] {
 	const lines = content.split("\n");
 	const elements: React.ReactNode[] = [];
@@ -41,16 +35,17 @@ function parseMarkdown(content: string): React.ReactNode[] {
 				codeLines.push(lines[i]);
 				i++;
 			}
+			// Claude Code style: code blocks with dark background feel
 			elements.push(
-				<Box key={i} flexDirection="column" marginY={1}>
+				<Box key={`code-${i}`} flexDirection="column" marginY={1} paddingLeft={2}>
 					{language && (
-						<Text color="#60A5FA">{language}</Text>
+						<Text dimColor color="#60A5FA">{language}</Text>
 					)}
-					<Text color="#34D399">
-						{codeLines.map((l, j) => (
-							<Text key={j}>{l}{"\n"}</Text>
-						))}
-					</Text>
+					{codeLines.map((l, j) => (
+						<Text key={j} color="#34D399">
+							{l}
+						</Text>
+					))}
 				</Box>
 			);
 			continue;
@@ -61,15 +56,24 @@ function parseMarkdown(content: string): React.ReactNode[] {
 		if (headingMatch) {
 			const level = headingMatch[1].length;
 			const text = headingMatch[2];
+			const colors = ["#60A5FA", "#A78BFA", "#34D399"] as const;
 			elements.push(
-				<Text key={i} bold color={level === 1 ? "#60A5FA" : level === 2 ? "#A78BFA" : "#34D399"}>
+				<Text key={i} bold color={colors[level - 1]}>
 					{text}
 				</Text>
 			);
 			continue;
 		}
 
-		// List item (- or * or 1.)
+		// Horizontal rule
+		if (line.match(/^[-*_]{3,}$/)) {
+			elements.push(
+				<Text key={i} dimColor color="#404040">───</Text>
+			);
+			continue;
+		}
+
+		// List item (-, *, or numbered)
 		const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
 		if (listMatch) {
 			const indent = listMatch[1].length;
@@ -84,21 +88,14 @@ function parseMarkdown(content: string): React.ReactNode[] {
 			continue;
 		}
 
-		// Horizontal rule
-		if (line.match(/^[-*_]{3,}$/)) {
-			elements.push(
-				<Text key={i} color="#404040">────────────────────────────────</Text>
-			);
-			continue;
-		}
-
 		// Regular line with inline markdown
 		if (line.trim()) {
 			elements.push(
-				<Text key={i} color="#F5F5F5">{parseInlineMarkdown(line)}</Text>
+				<Text key={i} color="#F5F5F5">
+					{parseInlineMarkdown(line)}
+				</Text>
 			);
 		} else {
-			// Empty line
 			elements.push(<Text key={i}>{"\n"}</Text>);
 		}
 	}
@@ -106,8 +103,8 @@ function parseMarkdown(content: string): React.ReactNode[] {
 	return elements;
 }
 
+// Inline markdown parser
 function parseInlineMarkdown(text: string): React.ReactNode {
-	// Handle inline code (`code`)
 	const parts: React.ReactNode[] = [];
 	let remaining = text;
 	let keyIndex = 0;
@@ -154,7 +151,6 @@ function parseInlineMarkdown(text: string): React.ReactNode {
 			continue;
 		}
 
-		// No more matches, add rest
 		parts.push(<Text key={keyIndex++}>{remaining}</Text>);
 		break;
 	}
@@ -162,7 +158,93 @@ function parseInlineMarkdown(text: string): React.ReactNode {
 	return parts.length > 0 ? <>{parts}</> : text;
 }
 
-export interface AppProps {
+// Tool call display - Claude Code style
+function renderToolCalls(toolCalls: Message["toolCalls"], theme: any) {
+	if (!toolCalls || toolCalls.length === 0) return null;
+
+	return (
+		<Box flexDirection="column" marginTop={1}>
+			{toolCalls.map((tc, i) => (
+				<Box key={i} flexDirection="row" alignItems="center">
+					<Text color={theme.colors.primary}>●</Text>
+					<Text color={theme.colors.textMuted}> </Text>
+					<Text color={theme.colors.primary} bold>{tc.name}</Text>
+					<Text color={theme.colors.textMuted}> - running...</Text>
+				</Box>
+			))}
+		</Box>
+	);
+}
+
+// Thinking display - Claude Code style
+function renderThinking(
+	thinking: string | undefined,
+	showAllThinking: boolean,
+	expandedThinking: Set<string>,
+	msgId: string,
+	theme: any
+) {
+	if (!thinking) return null;
+
+	const isExpanded = showAllThinking || expandedThinking.has(msgId);
+
+	return (
+		<Box flexDirection="column" marginBottom={1}>
+			<Box flexDirection="row" alignItems="center">
+				<Text color={theme.colors.secondary}>
+					{isExpanded ? "▼" : "▶"}
+				</Text>
+				<Text color={theme.colors.textMuted}> </Text>
+				<Text color={theme.colors.secondary} bold>Reasoning</Text>
+				<Text color={theme.colors.textMuted}> </Text>
+				<Text dimColor color={theme.colors.textMuted}>
+					[Tab]
+				</Text>
+			</Box>
+			{isExpanded && (
+				<Box paddingLeft={2} flexDirection="column" marginTop={1}>
+					<Text color={theme.colors.textDim} italic>
+						{thinking}
+					</Text>
+				</Box>
+			)}
+		</Box>
+	);
+}
+
+// Message bubble - Claude Code style
+function renderMessage(msg: Message, theme: any, showAllThinking: boolean, expandedThinking: Set<string>) {
+	const isUser = msg.role === "user";
+
+	return (
+		<Box key={msg.id} flexDirection="column" marginBottom={2}>
+			{/* Role indicator */}
+			<Box flexDirection="row" alignItems="center">
+				<Text bold color={isUser ? theme.colors.primary : theme.colors.accent}>
+					{isUser ? "❯" : "○"}
+				</Text>
+				<Text color={theme.colors.textMuted}> </Text>
+				<Text bold color={theme.colors.textDim}>
+					{isUser ? "You" : "Axiom"}
+				</Text>
+			</Box>
+
+			{/* Content */}
+			<Box paddingLeft={2} flexDirection="column">
+				{/* Thinking/Reasoning - only for assistant */}
+				{!isUser && renderThinking(msg.thinking, showAllThinking, expandedThinking, msg.id, theme)}
+
+				{/* Tool calls */}
+				{!isUser && renderToolCalls(msg.toolCalls, theme)}
+
+				{/* Message content */}
+				{parseMarkdown(msg.content)}
+			</Box>
+		</Box>
+	);
+}
+
+export const App: React.FC<{
 	messages?: Message[];
 	onMessage?: (message: string) => void;
 	onCommand?: (command: string) => void;
@@ -172,9 +254,7 @@ export interface AppProps {
 	isStreaming?: boolean;
 	disabled?: boolean;
 	commands?: Array<{ name: string; description: string; action: string }>;
-}
-
-export const App: React.FC<AppProps> = ({
+}> = ({
 	messages = [],
 	onMessage,
 	onCommand,
@@ -188,7 +268,7 @@ export const App: React.FC<AppProps> = ({
 	const theme = useTheme();
 	const { exit } = useApp();
 	const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
-	const [showAllThinking, setShowAllThinking] = useState(true);
+	const [showAllThinking, setShowAllThinking] = useState(false); // Default collapsed
 
 	// Toggle thinking expansion for a specific message
 	const toggleThinking = (msgId: string) => {
@@ -203,10 +283,10 @@ export const App: React.FC<AppProps> = ({
 		});
 	};
 
-	// Keyboard handler for toggling thinking display
+	// Keyboard handler for toggling thinking (Tab key)
 	useInput((input, key) => {
-		// Press 't' to toggle all thinking visibility when input is empty
-		if (input === "t" && !disabled && !isStreaming) {
+		if (disabled || isStreaming) return;
+		if (key.tab) {
 			setShowAllThinking((prev) => !prev);
 		}
 	});
@@ -216,7 +296,6 @@ export const App: React.FC<AppProps> = ({
 		(value: string) => {
 			if (value.startsWith("/")) {
 				if (value === "/clear") {
-					// Parent handles clear via messages prop update
 					onCommand?.("clear");
 				} else if (value === "/exit") {
 					exit();
@@ -234,76 +313,30 @@ export const App: React.FC<AppProps> = ({
 	const renderHistory = () => {
 		if (messages.length === 0) {
 			return (
-				<Text color={theme.colors.textMuted}>
-					Type a message to start...
+				<Text dimColor color={theme.colors.textMuted}>
+					Type a message...
 				</Text>
 			);
 		}
 
-		return messages.map((msg) => (
-			<Box key={msg.id} flexDirection="column" marginBottom={1}>
-				<Box flexDirection="row">
-					<Text bold color={msg.role === "user" ? theme.colors.primary : theme.colors.accent}>
-						{msg.role === "user" ? "❯" : "○"}
-					</Text>
-					<Text color={theme.colors.textMuted}> </Text>
-					<Text bold color={theme.colors.textDim}>
-						{msg.role === "user" ? "You" : "Axiom"}
-					</Text>
-				</Box>
-				<Box paddingLeft={2} flexDirection="column">
-					{msg.thinking && (
-						<Box flexDirection="column">
-							<Box flexDirection="row">
-								<Text color={theme.colors.secondary} bold>
-									[{showAllThinking || expandedThinking.has(msg.id) ? "▼" : "▶"} Thinking]
-								</Text>
-								<Text color={theme.colors.textMuted}> </Text>
-								<Text color={theme.colors.textMuted}>
-									[Press 't' to toggle all]
-								</Text>
-							</Box>
-							{(showAllThinking || expandedThinking.has(msg.id)) && (
-								<Box paddingLeft={2} flexDirection="column" marginTop={1}>
-									<Text color={theme.colors.secondary} italic>
-										{msg.thinking}
-									</Text>
-								</Box>
-							)}
-						</Box>
-					)}
-					{msg.toolCalls?.map((tc, i) => (
-						<Text key={i} color={theme.colors.primary}>
-							[{tc.name}...]
-						</Text>
-					))}
-					{parseMarkdown(msg.content)}
-				</Box>
-			</Box>
-		));
+		return messages.map((msg) => renderMessage(msg, theme, showAllThinking, expandedThinking));
 	};
 
 	return (
 		<Box flexDirection="column" paddingX={1}>
-			{/* Header */}
-			<Box flexDirection="row">
-				<Text color={theme.colors.primary}>╭</Text>
-				<Text color={theme.colors.borderDim}>────────────────────────────────────────────────────────────</Text>
-				<Text color={theme.colors.primary}>╮</Text>
+			{/* Minimal Header - Claude Code style */}
+			<Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
+				<Box flexDirection="row" alignItems="center">
+					<Text bold color={theme.colors.primary}>▲</Text>
+					<Text> </Text>
+					<Text bold color={theme.colors.text}>Axiom</Text>
+					<Text color={theme.colors.textMuted}> v0.1.0</Text>
+				</Box>
+				<Text color={theme.colors.textMuted}>minimax-m2.5-free</Text>
 			</Box>
-			<Box flexDirection="row">
-				<Text color={theme.colors.primary}>│</Text>
-				<Text> </Text>
-				<Text bold color={theme.colors.primary}>🤖 Axiom</Text>
-				<Text color={theme.colors.textMuted}> v0.1.0</Text>
-				<Text color={theme.colors.borderDim}>                                           </Text>
-				<Text color={theme.colors.primary}>│</Text>
-			</Box>
-			<Box flexDirection="row">
-				<Text color={theme.colors.primary}>╰</Text>
-				<Text color={theme.colors.borderDim}>────────────────────────────────────────────────────────────</Text>
-				<Text color={theme.colors.primary}>╯</Text>
-			</Box>
+
+			{/* Subtle divider */}
+			<Text dimColor color={theme.colors.borderDim}>────────────────────────────────────────────────────────────</Text>
 
 			{/* History */}
 			<Box flexDirection="column" minHeight={10}>
@@ -311,9 +344,7 @@ export const App: React.FC<AppProps> = ({
 			</Box>
 
 			{/* Divider */}
-			<Box flexDirection="row">
-				<Text color={theme.colors.borderDim}>────────────────────────────────────────────────────────────</Text>
-			</Box>
+			<Text dimColor color={theme.colors.borderDim}>────────────────────────────────────────────────────────────</Text>
 
 			{/* Status */}
 			<StatusIndicator state={aiState} message={aiMessage} toolName={aiToolName} size="small" />

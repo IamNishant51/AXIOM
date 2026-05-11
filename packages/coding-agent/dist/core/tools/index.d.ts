@@ -1,21 +1,23 @@
 /**
  * Built-in Tools for Axiom Coding Agent
+ * Enhanced with security validation and proper result formatting
  */
 import type { AgentTool } from "@axiom/agent-core";
+import { checkCommand, validatePath, getCommandCategory } from "./bash-security.js";
 /**
- * Read Tool - Read file contents
+ * Read Tool - Read file contents with validation
  */
 export declare const readTool: AgentTool;
 /**
- * Write Tool - Write file contents
+ * Write Tool - Write content to file with backup
  */
 export declare const writeTool: AgentTool;
 /**
- * Bash Tool - Execute shell commands
+ * Bash Tool - Execute shell commands with security validation
  */
 export declare const bashTool: AgentTool;
 /**
- * Edit Tool - Edit files with simple line-based editing
+ * Edit Tool - Edit files with old_string/new_string replacement
  */
 export declare const editTool: AgentTool;
 /**
@@ -31,11 +33,17 @@ export declare const lsTool: AgentTool;
  */
 export declare const findTool: AgentTool;
 /**
+ * Mkdir Tool - Create directories
+ */
+export declare const mkdirTool: AgentTool;
+/**
  * Default tools available to Axiom
  */
-export declare const defaultTools: AgentTool<import("@sinclair/typebox").TSchema, any>[];
+export declare const defaultTools: AgentTool[];
 /**
  * Read-only tools (for safe mode)
  */
-export declare const readOnlyTools: AgentTool<import("@sinclair/typebox").TSchema, any>[];
+export declare const readOnlyTools: AgentTool[];
+export { checkCommand, validatePath, getCommandCategory };
+export type { SecurityCheck, DangerLevel } from "./bash-security.js";
 //# sourceMappingURL=index.d.ts.map

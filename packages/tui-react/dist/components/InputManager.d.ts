@@ -1,6 +1,6 @@
 /**
- * InputManager Component - Premium command input with / palette
- * Simple, robust implementation
+ * InputManager Component - Claude Code CLI Style
+ * Clean, minimal input with proper styling and comprehensive backspace support
  */
 import React from "react";
 export interface Command {

@@ -20,6 +20,15 @@ export {
   type ThemeBorders,
 } from "./theme/index.js";
 
+// Theme loading
+export {
+  loadTheme,
+  saveTheme,
+  listThemes,
+  createDefaultTheme,
+  mergeTheme,
+} from "./theme/loadTheme.js";
+
 // Core components
 export {
   Panel,
@@ -27,6 +36,8 @@ export {
   StreamedText,
   StaticText,
   StreamedResponse,
+  StreamingResponse,
+  StreamingThinking,
   StaticResponse as StaticMessage,
   StatusIndicator,
   InputManager,
@@ -45,9 +56,55 @@ export {
   type MenuItem,
 } from "./components/index.js";
 
+// New advanced components
+export {
+  DiffView,
+  ToolOutput,
+  ToolChain,
+  MarkdownRenderer,
+  createSimpleDiff,
+  type DiffLine,
+  type DiffChange,
+  type DiffViewProps,
+} from "./components/index.js";
+
+// Phase 3 - Interaction & UX
+export {
+  TranscriptView,
+  VimInput,
+  type VimMode,
+} from "./components/index.js";
+
+// Phase 4 - Panel & Layout
+export {
+  PermissionDialog,
+  PermissionManager,
+  StatusBar,
+  CompactStatus,
+  type PermissionType,
+  type PermissionDialogProps,
+  type StatusBarProps,
+} from "./components/index.js";
+
+// Phase 5 - Advanced Features
+export {
+  SplitPane,
+  TabContainer,
+  type SplitDirection,
+  type SplitPaneProps,
+  type TabItem,
+  type TabContainerProps,
+} from "./components/index.js";
+
+// Hooks
+export {
+  useStreaming,
+  useScrollback,
+} from "./hooks/index.js";
+
 // Main App component
 export { App, default as AppDefault } from "./App.js";
-export type { AppProps, Message } from "./App.js";
+export { Message } from "./App.js";
 
 // Utility components
 export {
