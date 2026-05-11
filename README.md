@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://ik.imagekit.io/9pfz6g8ri/avatars/AXIOM-LOGO.png" alt="Axiom Logo" width="180">
+  <img src="https://ik.imagekit.io/9pfz6g8ri/avatars/AXIOM-LOGO.png" alt="Axiom Agent" width="180">
 </p>
 
 <h1 align="center">Axiom - Terminal Coding Agent</h1>
