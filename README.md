@@ -113,26 +113,26 @@ node dist/main.js
 
 ```
 ┌─────────────────────────────────────────────┐
-│         @axiom/coding-agent                  │
-│  ┌─────────────────────────────────────┐   │
-│  │  EnhancedApp (Premium TUI)           │   │
-│  │  - StreamingResponse               │   │
-│  │  - MarkdownRenderer                │   │
-│  │  - VimInput                        │   │
-│  │  - StatusBar                       │   │
-│  └─────────────────────────────────────┘   │
+│         @axiom/coding-agent                 │
+│  ┌─────────────────────────────────────┐    │
+│  │  EnhancedApp (Premium TUI)          │    │
+│  │  - StreamingResponse                │    │
+│  │  - MarkdownRenderer                 │    │
+│  │  - VimInput                         │    │
+│  │  - StatusBar                        │    │
+│  └─────────────────────────────────────┘    │
 ├─────────────────────────────────────────────┤
 │           @axiom/tui-react                  │
-│  30 components, 2 hooks, theme system     │
-│  - ScreenBuffer, FrameManager              │
-│  - FlexLayout (Yoga-inspired)             │
+│  30 components, 2 hooks, theme system       │
+│  - ScreenBuffer, FrameManager               │
+│  - FlexLayout (Yoga-inspired)               │
 │  - Clipboard utilities                      │
 ├─────────────────────────────────────────────┤
-│           @axiom/agent-core                │
-│  Agent loop, tool execution, event stream  │
+│           @axiom/agent-core                 │
+│  Agent loop, tool execution, event stream   │
 ├─────────────────────────────────────────────┤
 │              @axiom/ai                      │
-│  Multi-provider LLM abstraction            │
+│  Multi-provider LLM abstraction             │
 └─────────────────────────────────────────────┘
 ```
 
