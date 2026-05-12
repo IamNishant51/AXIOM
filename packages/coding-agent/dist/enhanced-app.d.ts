@@ -1,6 +1,5 @@
 /**
- * EnhancedApp.tsx - Full Claude Code CLI Experience
- * Enhanced with OpenClaude-style animations, glimmer effects, and premium UI
+ * EnhancedApp.tsx - Axiom CLI
  */
 import React from "react";
 export declare const EnhancedApp: React.FC<{

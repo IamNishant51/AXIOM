@@ -13,6 +13,7 @@ export { Panel, SmoothSpinner, StreamedText, StaticText, StreamedResponse, Strea
 export { DiffView, ToolOutput, ToolChain, MarkdownRenderer, EnhancedSpinnerRow, GlimmerMessage, createSimpleDiff, type DiffLine, type DiffChange, type DiffViewProps, } from "./components/index.js";
 export { TranscriptView, VimInput, type VimMode, } from "./components/index.js";
 export { PermissionDialog, PermissionManager, StatusBar, CompactStatus, type PermissionType, type PermissionDialogProps, type StatusBarProps, } from "./components/index.js";
+export { ModeToggle, Canvas, ActivityIndicator, ToolCallCard, ToolCallList, type AgentMode, } from "./components/index.js";
 export { SplitPane, TabContainer, type SplitDirection, type SplitPaneProps, type TabItem, type TabContainerProps, } from "./components/index.js";
 export { useStreaming, useScrollback, } from "./hooks/index.js";
 export { App, default as AppDefault } from "./App.js";

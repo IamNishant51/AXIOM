@@ -95,6 +95,16 @@ export {
   type StatusBarProps,
 } from "./components/index.js";
 
+// Build mode components
+export {
+  ModeToggle,
+  Canvas,
+  ActivityIndicator,
+  ToolCallCard,
+  ToolCallList,
+  type AgentMode,
+} from "./components/index.js";
+
 // Phase 5 - Advanced Features
 export {
   SplitPane,

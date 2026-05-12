@@ -19,6 +19,8 @@ export { DiffView, ToolOutput, ToolChain, MarkdownRenderer, EnhancedSpinnerRow, 
 export { TranscriptView, VimInput, } from "./components/index.js";
 // Phase 4 - Panel & Layout
 export { PermissionDialog, PermissionManager, StatusBar, CompactStatus, } from "./components/index.js";
+// Build mode components
+export { ModeToggle, Canvas, ActivityIndicator, ToolCallCard, ToolCallList, } from "./components/index.js";
 // Phase 5 - Advanced Features
 export { SplitPane, TabContainer, } from "./components/index.js";
 // Hooks

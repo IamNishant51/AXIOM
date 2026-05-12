@@ -10,6 +10,8 @@ import {
   ToolOutput,
   MarkdownRenderer,
   StatusBar,
+  ModeToggle,
+  Canvas,
 } from "@axiom/tui-react";
 import { createSettingsManager } from "./core/settings-manager.js";
 import { createModelRegistry } from "./core/model-registry.js";
@@ -21,6 +23,12 @@ import type { AssistantMessage, TextContent, ThinkingContent } from "@axiom/ai";
 import { initDb, getMemory, setMemory, searchMemory, deleteMemory } from "./storage/index.js";
 import { getMemoryService } from "./memory/index.js";
 import { getSessionManager } from "./session/index.js";
+import { createBuildAgent, type BuildAgent, type BuildCallbacks } from "./agents/build-agent.js";
+import { startPreviewServer, stopPreviewServer, previewUrl } from "./workspace/server.js";
+import { listTree, ensureWorkspace, type FileEntry } from "./workspace/index.js";
+import { buildSystemPrompt } from "./prompts/build-system.js";
+import { findNextAction, emitSafeBoundary, actionTarget } from "./core/xml-parser.js";
+import { createStreamManager, type StreamManager } from "./core/streaming.js";
 
 // Initialize database
 initDb();
@@ -533,8 +541,17 @@ export const EnhancedApp: React.FC<{
   const [inputValue, setInputValue] = useState("");
   const [inputMode, setInputMode] = useState<"normal" | "vim">("normal");
 
+  // Build mode state
+  const [agentMode, setAgentMode] = useState<"chat" | "code">("chat");
+  const [previewPort, setPreviewPort] = useState(0);
+  const [workspaceFiles, setWorkspaceFiles] = useState<FileEntry[]>([]);
+  const [isStreamingFile, setIsStreamingFile] = useState(false);
+  const [currentStreamingFile, setCurrentStreamingFile] = useState<string | null>(null);
+
   // Refs
   const agentRef = useRef<any>(null);
+  const buildAgentRef = useRef<BuildAgent | null>(null);
+  const streamManagerRef = useRef<StreamManager | null>(null);
   const processingStartRef = useRef<number | null>(null);
   const lastTokenRef = useRef(0);
   const contentRef = useRef("");
@@ -697,6 +714,62 @@ export const EnhancedApp: React.FC<{
       }
     });
 
+    // Initialize build agent
+    const conversationId = `conv-${Date.now()}`;
+    const buildCallbacks: BuildCallbacks = {
+      onToolCall: (tc) => {
+        const toolCall: ToolCall = {
+          id: tc.id,
+          name: tc.name,
+          args: tc.args,
+          status: "running",
+        };
+        setToolCalls(prev => [...prev, toolCall]);
+      },
+      onToolResult: (id, result, error) => {
+        setToolCalls(prev =>
+          prev.map(tc =>
+            tc.id === id ? { ...tc, status: error ? "error" : "done", result } : tc
+          )
+        );
+      },
+      onToken: (text) => {
+        contentRef.current += text;
+        setCurrentContent(contentRef.current);
+      },
+      onDone: () => {
+        setAiState("success");
+        setTimeout(() => setAiState("idle"), 1500);
+        setIsStreaming(false);
+      },
+      onError: (err) => {
+        setAiState("error");
+        setIsStreaming(false);
+      },
+      onWorkspaceChanged: async () => {
+        try {
+          const base = await ensureWorkspace(conversationId);
+          const files = await listTree(base);
+          setWorkspaceFiles(files);
+        } catch { /* ignore */ }
+      },
+      onActivityUpdate: (activity) => {
+        if (activity.kind === "tool") {
+          setAiState("working");
+        } else if (activity.kind === "thinking") {
+          setAiState("thinking");
+        } else if (activity.kind === "idle") {
+          setAiState("idle");
+        }
+      },
+    };
+    buildAgentRef.current = createBuildAgent(conversationId, buildCallbacks);
+
+    // Start preview server for build mode
+    startPreviewServer().then((port: number) => {
+      setPreviewPort(port);
+    }).catch(console.error);
+
     // Initial prompt
     if (initialPrompt) {
       handleSubmit(initialPrompt);
@@ -738,7 +811,7 @@ export const EnhancedApp: React.FC<{
   // Handle message submit
   const handleSubmit = useCallback(
     async (text: string) => {
-      if (!text.trim() || !agentRef.current) return;
+      if (!text.trim()) return;
 
       // Add user message
       const userMsg: Message = {
@@ -760,51 +833,115 @@ export const EnhancedApp: React.FC<{
       const assistantMsgId = `assistant-${Date.now()}`;
 
       try {
-        await agentRef.current.prompt(text);
+        if (agentMode === "chat") {
+          // Chat mode - use regular agent
+          if (!agentRef.current) return;
+          await agentRef.current.prompt(text);
 
-        const allMessages = agentRef.current.state.messages;
-        const assistantMsgs = allMessages.filter(
-          (m: any) => m.role === "assistant"
-        );
-        const lastMsg = assistantMsgs[assistantMsgs.length - 1] as AssistantMessage;
-
-        const textContent = lastMsg?.content?.find(
-          (c: any) => c.type === "text"
-        ) as TextContent | undefined;
-        const thinkingContent = lastMsg?.content?.find(
-          (c: any) => c.type === "thinking"
-        ) as ThinkingContent | undefined;
-
-        setMessages((prev) => {
-          const updated = [...prev];
-          const assistantIndex = updated.findIndex(
-            (m) => m.id === assistantMsgId
+          const allMessages = agentRef.current.state.messages;
+          const assistantMsgs = allMessages.filter(
+            (m: any) => m.role === "assistant"
           );
-          // Get completed tool calls
-          const completedTools = toolCalls.filter(tc => tc.status === "done").map(tc => ({
-            name: tc.name,
-            args: tc.args,
-            result: tc.result
-          }));
-          if (assistantIndex >= 0) {
-            updated[assistantIndex] = {
-              ...updated[assistantIndex],
-              content: textContent?.text || currentContent || "Completed",
-              timestamp: Date.now(),
-              toolCalls: completedTools,
-            };
-          } else {
-            updated.push({
-              id: assistantMsgId,
-              role: "assistant",
-              content: textContent?.text || currentContent || "Completed",
-              timestamp: Date.now(),
-              thinking: thinkingContent?.thinking,
-              toolCalls: completedTools,
-            });
+          const lastMsg = assistantMsgs[assistantMsgs.length - 1] as AssistantMessage;
+
+          const textContent = lastMsg?.content?.find(
+            (c: any) => c.type === "text"
+          ) as TextContent | undefined;
+          const thinkingContent = lastMsg?.content?.find(
+            (c: any) => c.type === "thinking"
+          ) as ThinkingContent | undefined;
+
+          setMessages((prev) => {
+            const updated = [...prev];
+            const assistantIndex = updated.findIndex(
+              (m) => m.id === assistantMsgId
+            );
+            const completedTools = toolCalls.filter(tc => tc.status === "done").map(tc => ({
+              name: tc.name,
+              args: tc.args,
+              result: tc.result
+            }));
+            if (assistantIndex >= 0) {
+              updated[assistantIndex] = {
+                ...updated[assistantIndex],
+                content: textContent?.text || currentContent || "Completed",
+                timestamp: Date.now(),
+                toolCalls: completedTools,
+              };
+            } else {
+              updated.push({
+                id: assistantMsgId,
+                role: "assistant",
+                content: textContent?.text || currentContent || "Completed",
+                timestamp: Date.now(),
+                thinking: thinkingContent?.thinking,
+                toolCalls: completedTools,
+              });
+            }
+            return updated;
+          });
+        } else {
+          // Build mode - use build agent
+          if (!buildAgentRef.current) return;
+
+          const settings = createSettingsManager();
+          const modelRegistry = createModelRegistry(settings);
+          const model = modelRegistry.getDefaultModel();
+          const apiKey = modelRegistry.getApiKey(model?.provider || "opencode");
+
+          if (!apiKey) {
+            throw new Error("No API key configured");
           }
-          return updated;
-        });
+
+          // Build the request with system prompt
+          const workspacePath = `~/.axiom/workspaces/build`;
+          const previewHref = `http://127.0.0.1:${previewPort}/`;
+          const systemPrompt = buildSystemPrompt(workspacePath, previewHref);
+
+          const baseMessages = [{ role: "user" as const, content: text }];
+          const response = await fetch("https://api.opencode.ai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: model || "opencode",
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...baseMessages
+              ],
+              stream: true,
+              max_tokens: 4000,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error("No response body");
+
+          let buffer = "";
+          const decoder = new TextDecoder();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+
+            // Process the buffer
+            await buildAgentRef.current.handleResponse(buffer, baseMessages);
+
+            // Check if done
+            if (!buffer.includes("<action") && !isStreamingFile) {
+              break;
+            }
+          }
+        }
       } catch (error) {
         console.error("Error:", error);
         setAiState("error");
@@ -1263,6 +1400,11 @@ export const EnhancedApp: React.FC<{
           <Text bold color={theme.colors.text}>Axiom</Text>
           <Text dimColor color={theme.colors.subtle}> · </Text>
           <Text dimColor color={theme.colors.inactive}>{currentModel}</Text>
+          <Text>  </Text>
+          <ModeToggle
+            activeMode={agentMode}
+            onModeChange={setAgentMode}
+          />
         </Box>
         <Box flexDirection="row" alignItems="center" gap={2}>
           <Text dimColor color={theme.colors.subtle}>
@@ -1287,6 +1429,22 @@ export const EnhancedApp: React.FC<{
         {renderToolChain()}
         <CommandPalette />
       </Box>
+
+      {/* Canvas (Build mode preview) */}
+      {agentMode === "code" && previewPort > 0 && (
+        <Box marginTop={1}>
+          <Canvas
+            conversationId="build"
+            isStreaming={isStreaming}
+            onClose={() => {}}
+            previewPort={previewPort}
+            onRefreshFiles={async () => {
+              const base = await ensureWorkspace("build");
+              return listTree(base);
+            }}
+          />
+        </Box>
+      )}
 
       {/* Divider */}
       <Box>

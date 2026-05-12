@@ -34,6 +34,13 @@ export type { DiffLine, DiffChange, DiffViewProps } from "./DiffView.js";
 
 export { MarkdownRenderer } from "./MarkdownRenderer.js";
 
+// New components from GEMMA improvement plan
+export { Canvas } from "./Canvas.js";
+export { ActivityIndicator } from "./ActivityIndicator.js";
+export { ToolCallCard, ToolCallList } from "./ToolCallCard.js";
+export { ModeToggle } from "./ModeToggle.js";
+export type { AgentMode } from "./ModeToggle.js";
+
 // Phase 3 - Interaction & UX
 export { TranscriptView } from "./TranscriptView.js";
 export type { TranscriptMessage } from "./TranscriptView.js";
