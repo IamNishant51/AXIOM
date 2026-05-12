@@ -1,0 +1,189 @@
+{
+  "name": "axiom-vscode",
+  "displayName": "Axiom",
+  "description": "AI-powered coding assistant with live preview and file streaming",
+  "version": "1.0.0",
+  "publisher": "axiom",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "AI"
+  ],
+  "keywords": [
+    "ai",
+    "copilot",
+    "assistant",
+    "coding",
+    "gpt"
+  ],
+  "activationEvents": [
+    "onCommand:axiom.start",
+    "onCommand:axiom.toggleSidebar",
+    "onView:axiom.sidebar"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "axiom.start",
+        "title": "Axiom: Start Chat",
+        "category": "Axiom",
+        "icon": "$(copilot)"
+      },
+      {
+        "command": "axiom.toggleSidebar",
+        "title": "Axiom: Toggle Sidebar",
+        "category": "Axiom",
+        "icon": "$(copilot)"
+      },
+      {
+        "command": "axiom.clearChat",
+        "title": "Axiom: Clear Chat",
+        "category": "Axiom",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "axiom.switchMode",
+        "title": "Axiom: Switch Mode",
+        "category": "Axiom",
+        "icon": "$(toggle)"
+      },
+      {
+        "command": "axiom.refreshPreview",
+        "title": "Axiom: Refresh Preview",
+        "category": "Axiom",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "axiom.openPreview",
+        "title": "Axiom: Open Preview in Browser",
+        "category": "Axiom",
+        "icon": "$(browser)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "axiom.sidebar.viewContainer",
+          "title": "Axiom",
+          "icon": "$(copilot)"
+        }
+      ]
+    },
+    "views": {
+      "axiom.sidebar.viewContainer": [
+        {
+          "id": "axiom.sidebar",
+          "name": "Axiom",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Axiom",
+      "properties": {
+        "axiom.theme": {
+          "type": "string",
+          "default": "dark",
+          "enum": [
+            "dark",
+            "light",
+            "system"
+          ],
+          "description": "Color theme"
+        },
+        "axiom.fontSize": {
+          "type": "number",
+          "default": 14,
+          "description": "Font size"
+        },
+        "axiom.showThinking": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show thinking/reasoning blocks"
+        },
+        "axiom.autoPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open preview in build mode"
+        },
+        "axiom.workspacePath": {
+          "type": "string",
+          "default": "~/.axiom/workspaces",
+          "description": "Workspace directory for build mode"
+        },
+        "axiom.apiProvider": {
+          "type": "string",
+          "default": "opencode",
+          "enum": [
+            "opencode",
+            "anthropic",
+            "openai",
+            "google"
+          ],
+          "description": "AI API provider"
+        },
+        "axiom.model": {
+          "type": "string",
+          "default": "opencode",
+          "description": "Model to use"
+        },
+        "axiom.maxTokens": {
+          "type": "number",
+          "default": 4000,
+          "description": "Maximum tokens per response"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "axiom.toggleSidebar",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "axiom.clearChat",
+        "key": "ctrl+shift+k",
+        "mac": "cmd+shift+k",
+        "when": "axiom:sidebarVisible"
+      }
+    ]
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "watch": "tsc && vite build --watch",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.344.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^9.0.1",
+    "react-syntax-highlighter": "^15.5.0",
+    "tailwind-merge": "^2.2.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/react-syntax-highlighter": "^15.5.11",
+    "@types/vscode": "^1.118.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vscode/test-web": "^0.0.50",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12",
+    "vsce": "^2.15.0"
+  }
+}
