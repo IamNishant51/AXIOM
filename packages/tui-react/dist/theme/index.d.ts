@@ -1,16 +1,14 @@
 /**
- * Theme System - Axiom Branding Theme
- * Black, Deep Gray, White/Silver color scheme
+ * Theme System - Colors and styling abstraction
+ * Premium TUI theme matching OpenClaude style
  */
 import React, { type ReactNode } from "react";
 export interface ThemeColors {
-    primary: string;
-    primaryShimmer: string;
-    accent: string;
-    accentShimmer: string;
     claude: string;
     claudeShimmer: string;
+    primary: string;
     secondary: string;
+    accent: string;
     permission: string;
     permissionShimmer: string;
     planMode: string;
@@ -41,8 +39,8 @@ export interface ThemeColors {
     diffRemovedDimmed: string;
     cursor: string;
     selection: string;
-    spinner: string;
-    spinnerShimmer: string;
+    claudeBlue: string;
+    claudeBlueShimmer: string;
 }
 export interface ThemeBorders {
     topLeft: string;
@@ -70,8 +68,6 @@ export interface Theme {
         spinner: string[];
     };
 }
-export declare const axiomDarkTheme: Theme;
-export declare const axiomLightTheme: Theme;
 export declare const defaultTheme: Theme;
 export declare const lightTheme: Theme;
 export declare const ThemeContext: React.Context<[Theme, (theme: Theme) => void]>;
@@ -120,6 +116,4 @@ export declare const THINKING_INACTIVE_SHIMMER: {
     g: number;
     b: number;
 };
-export declare const AXIOM_CAT_LOGO = "\n                                                               .#@@%:\n                                #@@#:                         :@*. #@%-\n                                #@@@@@%=.                    :@*    =@@%:\n                                *@:+@*:*@%=                 :@# :#   -@@@*\n                                :@= :%#  :#@#:              %@:.#-    :%*%%:\n                                 @#   %@:   +@%:           +@= =*      .@==@*\n                                 +%:   %%:    =@%:        :%% .%-       :%:-@#\n                                 .@*    ##.     +@%:     .+@: +*         ** :@#.\n                                  ##.   .%*..:-+*@@@@%%%%@@+  %=         :%- :@#\n                                  -@-   :#@@@#*-:.       *%: =#.          #+  -@*\n                                   %#*%@*-.              #=  %+           **   +@:\n                                  *@@+                       +@%=         **   .%*\n                               -%@*                             :*@#:     **    =@-\n                             :%@=                                  .*@=   %=    :@@-\n                            *@+                                       +%++%:    :%@@*\n                          -@#:                                          =%=     :@+-@*\n                         -@*                                                    -@- =@=\n                        :@*                                                      :   *%:\n              .+#%%#*+-:%*      .-+*##%%%%%%#*+-.                                    :@*\n             :@@+---=+*%@+   .*@#*+=-:::::::-=+#@@%=-::::::::::::::::::::::::.        *@.\n             -@*=#####*#@@+::*@:      :+*+-:    +@@#************************#@@*.     -@-\n             :%*      *#=@%*%@#.    -%+#@+:*@#- =@*                           :%@:    :%*\n              *%      %*-@=  *@:   .#= +@=  -@= +@+                            .%#     #%\n              +@:     +@#@:  -@=   -@%  %= *@:  *@:                                    *@\n              -@*      @@=   .#%.  ***@%#%%=    #@                                     *@\n               *@=    +@=     -@*              :%#                                    .#%\n                =@@#*%@-       +@#:           :#@:                                    :%*\n                  .=@%.         .*%@@@@@@@@@@@@*.                                     +@:\n                  .#@@@@@@%=                                                         .#%\n                  .#@-  =#@*                                                         =@=\n                  .#@@**@-                                                          .@*\n                  .#*-@@*                                                           #%:\n                   +@: %#.                                                         #%:\n                    *@::@%*                                                      :%%.\n                     -@@%=*@@#+:    ::                                          *@*\n                       :@+   :+#@@@@%*                                       :%@%@*\n                        -@#.                                              -%@%-  +@-\n                          +%@*=:..                                   :=#@%*:      #@\n                            .-+*#%@@@@%#*:                      :=*@@#+:        :#@*\n                                   :##=:=%*       :*##-   .-*#@@#+:.         :*@#-\n                                  .%*:%@*:#%   -%@@-.*@%@@@*:             *%@%:\n                                  -@:   *@@@@@@%:    :%*             .+@@@*.\n                                  +%:   *%: :@*      .#@        .=%@@%+.\n                                  =@:   *%: :@*      .#@..:=*%@%*=:\n                                  :@+   +@%**@%:     :%@@#*=:\n                                   *@*#@*:::::=@%+.  -@=\n                                    ::          .*@@%@%\n                                                    .:";
-export declare const AXIOM_CAT_COMPACT = "\n   /\\_/\\\n  ( o.o )\n   > ^ <";
 //# sourceMappingURL=index.d.ts.map

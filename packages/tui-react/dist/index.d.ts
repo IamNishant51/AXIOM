@@ -7,7 +7,7 @@
  * Usage:
  *   import { Panel, SmoothSpinner, StreamedText } from '@axiom/tui-react';
  */
-export { defaultTheme, lightTheme, axiomDarkTheme, axiomLightTheme, setTheme, getTheme, useTheme, resolveColor, parseRGB, interpolateColor, toRGBColor, ERROR_RED, THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, AXIOM_CAT_LOGO, AXIOM_CAT_COMPACT, type Theme, type ThemeColors, type ThemeBorders, } from "./theme/index.js";
+export { defaultTheme, lightTheme, setTheme, getTheme, useTheme, resolveColor, parseRGB, interpolateColor, toRGBColor, ERROR_RED, THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, type Theme, type ThemeColors, type ThemeBorders, } from "./theme/index.js";
 export { loadTheme, saveTheme, listThemes, createDefaultTheme, mergeTheme, } from "./theme/loadTheme.js";
 export { Panel, SmoothSpinner, StreamedText, StaticText, StreamedResponse, StreamingResponse, StreamingThinking, StaticResponse as StaticMessage, StatusIndicator, InputManager, InteractiveMenu, useMenuInput, type PanelProps, type SmoothSpinnerProps, type StreamedTextProps, type StreamedResponseProps, type StreamChunk, type StatusIndicatorProps, type StatusState, type InputManagerProps, type Command, type InteractiveMenuProps, type MenuItem, } from "./components/index.js";
 export { DiffView, ToolOutput, ToolChain, MarkdownRenderer, EnhancedSpinnerRow, GlimmerMessage, createSimpleDiff, type DiffLine, type DiffChange, type DiffViewProps, } from "./components/index.js";

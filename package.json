@@ -8,6 +8,8 @@
     "build": "pnpm -r run build",
     "check": "pnpm -r run check",
     "test": "bash test.sh",
+    "lint": "bash scripts/lint.sh",
+    "audit": "pnpm audit --audit-level=moderate",
     "axiom": "bash axiom-test.sh"
   },
   "devDependencies": {

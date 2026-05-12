@@ -109,22 +109,11 @@ function parseInline(text) {
     let remaining = text;
     let keyIndex = 0;
     while (remaining.length > 0) {
-        // Inline code (must check before bold to handle `**` etc)
-        const codeMatch = remaining.match(/`([^`]+)`/);
-        if (codeMatch && (codeMatch.index ?? 0) === 0) {
-            parts.push(React.createElement(Text, { key: keyIndex++, color: COLORS.accent }, codeMatch[1]));
-            remaining = remaining.slice(codeMatch.index + codeMatch[0].length);
-            continue;
-        }
-        // Bold (**text** or __text__)
+        // Bold (**text**) - must check before single *
         const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
-        const boldMatchAlt = remaining.match(/__([^_]+)__/);
-        const bold = boldMatch && (!boldMatchAlt || (boldMatch.index ?? 0) < (boldMatchAlt.index ?? Infinity))
-            ? boldMatch
-            : boldMatchAlt;
-        if (bold && (bold.index ?? 0) === 0) {
-            parts.push(React.createElement(Text, { key: keyIndex++, bold: true }, bold[1]));
-            remaining = remaining.slice(bold.index + bold[0].length);
+        if (boldMatch && (boldMatch.index ?? 0) === 0) {
+            parts.push(React.createElement(Text, { key: keyIndex++, bold: true }, boldMatch[1]));
+            remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
             continue;
         }
         // Italic (*text* or _text_)
@@ -138,10 +127,17 @@ function parseInline(text) {
             remaining = remaining.slice(italic.index + italic[0].length);
             continue;
         }
+        // Inline code (must check before other patterns)
+        const codeMatch = remaining.match(/`([^`]+)`/);
+        if (codeMatch && (codeMatch.index ?? 0) === 0) {
+            parts.push(React.createElement(Text, { key: keyIndex++, color: COLORS.accent }, codeMatch[1]));
+            remaining = remaining.slice(codeMatch.index + codeMatch[0].length);
+            continue;
+        }
         // Strikethrough
         const strikeMatch = remaining.match(/~~([^~]+)~~/);
         if (strikeMatch && (strikeMatch.index ?? 0) === 0) {
-            parts.push(React.createElement(Text, { key: keyIndex++, color: COLORS.textMuted, strikethrough: true }, strikeMatch[1]));
+            parts.push(React.createElement(Text, { key: keyIndex++, dimColor: true, strikethrough: true }, strikeMatch[1]));
             remaining = remaining.slice(strikeMatch.index + strikeMatch[0].length);
             continue;
         }

@@ -1,25 +1,15 @@
 /**
- * EnhancedApp.tsx - Full Claude Code CLI Experience
- * Enhanced with OpenClaude-style animations, glimmer effects, and premium UI
+ * EnhancedApp.tsx - Axiom CLI
  */
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Box, Text, useApp, useInput } from "ink";
-import { useTheme, defaultTheme, resolveColor, parseRGB, interpolateColor, toRGBColor, ERROR_RED } from "@axiom/tui-react";
+import { useTheme, defaultTheme } from "@axiom/tui-react";
 import type { StatusState, Message } from "@axiom/tui-react";
 import {
-  StreamingResponse,
-  StreamingThinking,
-  EnhancedSpinnerRow,
   ToolOutput,
-  ToolChain,
-  DiffView,
   MarkdownRenderer,
-  PermissionDialog,
   StatusBar,
-  VimInput,
-  SmoothSpinner,
-  GlimmerMessage,
 } from "@axiom/tui-react";
 import { createSettingsManager } from "./core/settings-manager.js";
 import { createModelRegistry } from "./core/model-registry.js";
@@ -28,13 +18,16 @@ import { internetTools } from "./core/extensions/internet.js";
 import { Agent, type AgentTool } from "@axiom/agent-core";
 import { defaultTools } from "./core/tools/index.js";
 import type { AssistantMessage, TextContent, ThinkingContent } from "@axiom/ai";
+import { initDb, getMemory, setMemory, searchMemory, deleteMemory } from "./storage/index.js";
+import { getMemoryService } from "./memory/index.js";
+import { getSessionManager } from "./session/index.js";
+
+// Initialize database
+initDb();
 import * as path from "node:path";
 
 // Set theme
 defaultTheme;
-
-// Spinner mode type
-type SpinnerMode = "thinking" | "requesting" | "tool-use" | "responding" | "tool-input";
 
 // Tool call interface
 interface ToolCall {
@@ -43,17 +36,6 @@ interface ToolCall {
   args: any;
   status: "pending" | "running" | "done" | "error";
   result?: string;
-}
-
-// Calculate string width
-function stringWidth(str: string): number {
-  let width = 0;
-  for (const char of str) {
-    if (char >= "一" && char <= "鿿") width += 2;
-    else if (char >= "０" && char <= "ｚ") width += 2;
-    else width += 1;
-  }
-  return width;
 }
 
 // Format duration
@@ -168,7 +150,346 @@ function buildCommands(
       description: "Exit Axiom",
       action: () => process.exit(0),
     },
+    {
+      name: "/remember",
+      description: "Save to memory: /remember <key> <value>",
+      action: () => {
+        // This will be handled in the input processing
+      },
+      subcommands: [
+        { name: "/remember <key> <value>", description: "Save a memory", action: () => {} },
+      ],
+    },
+    {
+      name: "/recall",
+      description: "Recall memory: /recall <key>",
+      action: () => {},
+    },
+    {
+      name: "/search",
+      description: "Search memory: /search <query>",
+      action: () => {},
+    },
+    {
+      name: "/forget",
+      description: "Delete memory: /forget <key>",
+      action: () => {},
+    },
+    {
+      name: "/memories",
+      description: "List all memories",
+      action: () => {},
+    },
+    {
+      name: "/fork",
+      description: "Fork current session",
+      action: () => {},
+    },
+    {
+      name: "/sessions",
+      description: "List all sessions",
+      action: () => {},
+    },
+    {
+      name: "/snapshot",
+      description: "Create session snapshot: /snapshot <desc>",
+      action: () => {},
+    },
+    {
+      name: "/snapshots",
+      description: "List session snapshots",
+      action: () => {},
+    },
+    {
+      name: "/stats",
+      description: "Show session statistics",
+      action: () => {},
+    },
   ];
+}
+
+// Memory command handler
+function handleMemoryCommand(
+  cmd: string,
+  args: string[],
+  setMessages: (fn: (prev: Message[]) => Message[]) => void
+): boolean {
+  const memoryService = getMemoryService();
+
+  if (cmd === "/memories") {
+    // List all memories
+    const memories = memoryService.search("", 50);
+    const content = memories.length > 0
+      ? memories.map(m => `• ${m.key}: ${m.value.substring(0, 100)}${m.value.length > 100 ? '...' : ''}`).join('\n')
+      : "No memories stored.";
+
+    const msg: Message = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      content: `📝 Memory Bank\n${content}`,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, msg]);
+    return true;
+  }
+
+  if (cmd === "/remember") {
+    if (args.length < 2) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: "Usage: /remember <key> <value>",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+      return true;
+    }
+    const [key, ...valueParts] = args;
+    const value = valueParts.join(" ");
+    memoryService.autoSave(key, value);
+    const msg: Message = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      content: `✓ Saved to memory: ${key}`,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, msg]);
+    return true;
+  }
+
+  if (cmd === "/recall") {
+    if (args.length < 1) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: "Usage: /recall <key>",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+      return true;
+    }
+    const key = args[0];
+    const value = memoryService.autoGet(key);
+    if (value !== undefined) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: `🔑 ${key}: ${value}`,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    } else {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: `No memory found for key: ${key}`,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    }
+    return true;
+  }
+
+  if (cmd === "/search") {
+    if (args.length < 1) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: "Usage: /search <query>",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+      return true;
+    }
+    const query = args.join(" ");
+    const results = memoryService.search(query, 10);
+    const content = results.length > 0
+      ? results.map(m => `• ${m.key}: ${m.value.substring(0, 100)}${m.value.length > 100 ? '...' : ''}`).join('\n')
+      : `No memories found matching: "${query}"`;
+
+    const msg: Message = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      content: `🔍 Search results for "${query}":\n${content}`,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, msg]);
+    return true;
+  }
+
+  if (cmd === "/forget") {
+    if (args.length < 1) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: "Usage: /forget <key>",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+      return true;
+    }
+    const key = args[0];
+    memoryService.forget(`auto_${key}`);
+    const msg: Message = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      content: `✓ Deleted memory: ${key}`,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, msg]);
+    return true;
+  }
+
+  return false;
+}
+
+// Session command handler
+function handleSessionCommand(
+  cmd: string,
+  args: string[],
+  setMessages: (fn: (prev: Message[]) => Message[]) => void
+): boolean {
+  const sessionManager = getSessionManager();
+
+  if (cmd === "/sessions") {
+    const sessions = sessionManager.listAllSessions();
+    const content = sessions.length > 0
+      ? sessions.map(s => `• ${s.title} (${s.model}) - ${new Date(s.createdAt).toLocaleDateString()}`).join('\n')
+      : "No sessions found.";
+
+    const msg: Message = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      content: `📁 Sessions\n${content}`,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, msg]);
+    return true;
+  }
+
+  if (cmd === "/fork") {
+    const newSession = sessionManager.forkCurrentSession();
+    sessionManager.setCurrentSession(newSession.id);
+    const msg: Message = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      content: `⑂ Forked session: ${newSession.title}`,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, msg]);
+    return true;
+  }
+
+  if (cmd === "/snapshot") {
+    const currentSession = sessionManager.getCurrentSession();
+    if (!currentSession) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: "No active session to snapshot",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+      return true;
+    }
+    const description = args.join(" ") || undefined;
+    try {
+      const { createSnapshot } = require("./snapshot/index.js");
+      const snapshot = createSnapshot(currentSession.id, description);
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: `📸 Snapshot created: ${snapshot.title}\nMessages: ${snapshot.messageCount}, Tokens: ${snapshot.tokenCount}`,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    } catch (e) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: `Failed to create snapshot: ${e}`,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    }
+    return true;
+  }
+
+  if (cmd === "/snapshots") {
+    const currentSession = sessionManager.getCurrentSession();
+    if (!currentSession) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: "No active session",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+      return true;
+    }
+    try {
+      const { listSnapshots } = require("./snapshot/index.js");
+      const snapshots = listSnapshots(currentSession.id);
+      const content = snapshots.length > 0
+        ? snapshots.map((s: { title: string; messageCount: number; tokenCount: number }) => `• ${s.title} - ${s.messageCount} msgs, ${s.tokenCount} tokens`).join('\n')
+        : "No snapshots for this session.";
+
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: `📸 Snapshots\n${content}`,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    } catch (e) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: `Failed to list snapshots: ${e}`,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    }
+    return true;
+  }
+
+  if (cmd === "/stats") {
+    const currentSession = sessionManager.getCurrentSession();
+    if (!currentSession) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: "No active session",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+      return true;
+    }
+    try {
+      const { getToolStats } = require("./core/tool-invocations.js");
+      const stats = getToolStats(currentSession.id);
+      const content = `📊 Session Statistics\n\nTotal invocations: ${stats.totalInvocations}\nSuccessful: ${stats.successful}\nFailed: ${stats.failed}\nTotal duration: ${Math.round(stats.totalDuration / 1000)}s`;
+
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    } catch (e) {
+      const msg: Message = {
+        id: `system-${Date.now()}`,
+        role: "assistant",
+        content: `Failed to get stats: ${e}`,
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, msg]);
+    }
+    return true;
+  }
+
+  return false;
 }
 
 // Main Enhanced App Component
@@ -187,13 +508,8 @@ export const EnhancedApp: React.FC<{
   // Message state
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentThinking, setCurrentThinking] = useState<string>("");
-  const [currentThinkingIntensity, setCurrentThinkingIntensity] = useState(0);
   const [currentContent, setCurrentContent] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
-
-  // Thinking expansion state
-  const [showAllThinking, setShowAllThinking] = useState(false);
-  const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
 
   // Tool state
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
@@ -207,14 +523,9 @@ export const EnhancedApp: React.FC<{
   // Help dialog state
   const [showHelp, setShowHelp] = useState(false);
 
-  // Animation state
-  const [time, setTime] = useState(0);
-  const [frame, setFrame] = useState(0);
-  const [glimmerIndex, setGlimmerIndex] = useState(-100);
-  const [stalledIntensity, setStalledIntensity] = useState(0);
+  // Simple timing state
   const [totalTokens, setTotalTokens] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [lastTokenTime, setLastTokenTime] = useState(Date.now());
 
   // UI state
   const [aiState, setAiState] = useState<StatusState>("idle");
@@ -227,27 +538,6 @@ export const EnhancedApp: React.FC<{
   const processingStartRef = useRef<number | null>(null);
   const lastTokenRef = useRef(0);
   const contentRef = useRef("");
-
-  // Animation frame effect (50ms for smooth animations)
-  useEffect(() => {
-    if (isStreaming) {
-      const interval = setInterval(() => {
-        setTime((prev) => prev + 50);
-        setFrame((prev) => prev + 1);
-
-        // Update glimmer
-        const messageWidth = stringWidth(currentContent);
-        const cycleLength = messageWidth + 20;
-        const position = Math.floor(time / 200);
-        const index = messageWidth + 10 - (position % cycleLength);
-        setGlimmerIndex(index);
-      }, 50);
-
-      return () => clearInterval(interval);
-    } else {
-      setGlimmerIndex(-100);
-    }
-  }, [isStreaming, currentContent, time]);
 
   // Elapsed time tracking
   useEffect(() => {
@@ -265,26 +555,6 @@ export const EnhancedApp: React.FC<{
 
     return () => clearInterval(interval);
   }, [isStreaming]);
-
-  // Stalled detection
-  useEffect(() => {
-    if (totalTokens > lastTokenRef.current) {
-      lastTokenRef.current = totalTokens;
-      setLastTokenTime(Date.now());
-      setStalledIntensity(0);
-    }
-
-    const checkStalled = () => {
-      const timeSinceLastToken = Date.now() - lastTokenTime;
-      if (timeSinceLastToken > 3000 && isStreaming) {
-        const intensity = Math.min((timeSinceLastToken - 3000) / 2000, 1);
-        setStalledIntensity(intensity);
-      }
-    };
-
-    const interval = setInterval(checkStalled, 500);
-    return () => clearInterval(interval);
-  }, [totalTokens, lastTokenTime, isStreaming]);
 
   // Initialize agent
   useEffect(() => {
@@ -328,58 +598,99 @@ export const EnhancedApp: React.FC<{
       }
     });
 
+    // Event batching for smooth updates
+    let pendingState: {
+      aiState?: StatusState;
+      currentThinking?: string;
+      currentToolCall?: ToolCall | null;
+      toolCallAdded?: ToolCall;
+      currentContent?: string;
+      totalTokens?: number;
+    } | null = null;
+    let batchTimeout: NodeJS.Timeout | null = null;
+
+    const flushBatch = () => {
+      if (!pendingState) return;
+
+      if (pendingState.aiState !== undefined) setAiState(pendingState.aiState);
+      if (pendingState.currentThinking !== undefined) setCurrentThinking(pendingState.currentThinking);
+      if (pendingState.toolCallAdded) setToolCalls(prev => [...prev, pendingState!.toolCallAdded!]);
+      if (pendingState.currentToolCall !== undefined) setCurrentToolCall(pendingState.currentToolCall);
+      if (pendingState.currentContent !== undefined) {
+        setCurrentContent(pendingState.currentContent);
+        contentRef.current = pendingState.currentContent;
+      }
+      if (pendingState.totalTokens !== undefined) setTotalTokens(pendingState.totalTokens);
+
+      pendingState = null;
+      batchTimeout = null;
+    };
+
+    const scheduleBatch = (updates: typeof pendingState) => {
+      // Merge updates
+      pendingState = { ...pendingState, ...updates };
+
+      // Schedule flush at end of event loop
+      if (!batchTimeout) {
+        batchTimeout = setTimeout(flushBatch, 0);
+      }
+    };
+
     // Subscribe to agent events
     agentRef.current.subscribe((event: any) => {
       switch (event.type) {
         case "thinking_start":
-          setAiState("thinking");
-          setCurrentThinking(event.thinking || "");
+          scheduleBatch({ aiState: "thinking", currentThinking: event.thinking || "" });
           break;
 
         case "thinking_update":
-          setCurrentThinking(event.thinking || "");
+          scheduleBatch({ currentThinking: event.thinking || "" });
           break;
 
         case "thinking_end":
-          setCurrentThinking("");
+          scheduleBatch({ currentThinking: "" });
           break;
 
         case "tool_execution_start":
-          setAiState("working");
           const toolCall: ToolCall = {
             id: `tool-${Date.now()}`,
             name: event.toolName,
             args: event.args || {},
             status: "running",
           };
-          setCurrentToolCall(toolCall);
-          setToolCalls((prev) => [...prev, toolCall]);
+          scheduleBatch({ aiState: "working", currentToolCall: toolCall, toolCallAdded: toolCall });
           break;
 
         case "tool_execution_end":
-          setToolCalls((prev) =>
-            prev.map((tc) =>
-              tc.id === currentToolCall?.id
-                ? { ...tc, status: "done", result: event.result }
+          // Get the result directly to avoid stale closure
+          const result = event.result || "";
+          setToolCalls(prev =>
+            prev.map(tc =>
+              tc.id === pendingState?.toolCallAdded?.id
+                ? { ...tc, status: "done", result }
                 : tc
             )
           );
-          setCurrentToolCall(null);
-          setAiState("thinking");
+          scheduleBatch({ aiState: "thinking", currentToolCall: null });
           break;
 
         case "text_delta":
-          setCurrentContent((prev) => prev + event.text);
-          contentRef.current += event.text;
-          setTotalTokens((prev) => prev + 1);
+          // Batch text updates - only update every few characters
+          const newContent = contentRef.current + event.text;
+          if (newContent.length - contentRef.current.length >= 20 || event.text.length < 5) {
+            scheduleBatch({ currentContent: newContent, totalTokens: totalTokens + 1 });
+          }
+          contentRef.current = newContent;
           break;
 
         case "message_complete":
+          flushBatch(); // Flush any pending updates
           setAiState("success");
           setTimeout(() => setAiState("idle"), 1500);
           break;
 
         case "error":
+          flushBatch();
           setAiState("error");
           setTimeout(() => setAiState("idle"), 2000);
           break;
@@ -392,19 +703,6 @@ export const EnhancedApp: React.FC<{
     }
   }, []);
 
-  // Toggle thinking expansion
-  const toggleThinking = useCallback((msgId: string) => {
-    setExpandedThinking((prev) => {
-      const next = new Set(prev);
-      if (next.has(msgId)) {
-        next.delete(msgId);
-      } else {
-        next.add(msgId);
-      }
-      return next;
-    });
-  }, []);
-
   // Keyboard shortcuts
   const inputModeRef = useRef(inputMode);
   inputModeRef.current = inputMode;
@@ -415,12 +713,6 @@ export const EnhancedApp: React.FC<{
       agentRef.current?.cancel?.();
       setIsStreaming(false);
       setAiState("idle");
-      return;
-    }
-
-    // Tab to toggle thinking
-    if (key.tab && inputModeRef.current !== "vim" && !isStreaming) {
-      setShowAllThinking((prev) => !prev);
       return;
     }
 
@@ -488,11 +780,18 @@ export const EnhancedApp: React.FC<{
           const assistantIndex = updated.findIndex(
             (m) => m.id === assistantMsgId
           );
+          // Get completed tool calls
+          const completedTools = toolCalls.filter(tc => tc.status === "done").map(tc => ({
+            name: tc.name,
+            args: tc.args,
+            result: tc.result
+          }));
           if (assistantIndex >= 0) {
             updated[assistantIndex] = {
               ...updated[assistantIndex],
               content: textContent?.text || currentContent || "Completed",
               timestamp: Date.now(),
+              toolCalls: completedTools,
             };
           } else {
             updated.push({
@@ -501,6 +800,7 @@ export const EnhancedApp: React.FC<{
               content: textContent?.text || currentContent || "Completed",
               timestamp: Date.now(),
               thinking: thinkingContent?.thinking,
+              toolCalls: completedTools,
             });
           }
           return updated;
@@ -515,43 +815,27 @@ export const EnhancedApp: React.FC<{
     [currentContent]
   );
 
-  // Render thinking for a message
+  // Render thinking for a message (simplified - always visible)
   const renderThinking = useCallback(
     (msg: Message) => {
       if (!msg.thinking) return null;
 
-      const isExpanded = showAllThinking || expandedThinking.has(msg.id);
-
       return (
-        <Box flexDirection="column" marginBottom={1}>
-          <Box flexDirection="row" alignItems="center">
-            <Text color={theme.colors.secondary}>
-              {isExpanded ? "▼" : "▶"}
-            </Text>
-            <Text color={theme.colors.inactive}> </Text>
-            <Text bold color={theme.colors.secondary}>Reasoning</Text>
-            <Text color={theme.colors.inactive}> </Text>
-            <Text dimColor color={theme.colors.subtle}>
-              [Tab]
-            </Text>
-          </Box>
-          {isExpanded && (
-            <Box
-              paddingLeft={2}
-              flexDirection="column"
-              marginTop={1}
-              borderStyle="round"
-              borderColor={theme.colors.inactive}
-            >
-              <Text color={theme.colors.inactive} italic>
-                {msg.thinking}
-              </Text>
-            </Box>
-          )}
+        <Box
+          paddingLeft={2}
+          flexDirection="column"
+          marginTop={1}
+          borderStyle="round"
+          borderColor={theme.colors.inactive}
+        >
+          <Text dimColor color={theme.colors.secondary}>Reasoning:</Text>
+          <Text color={theme.colors.inactive} italic>
+            {msg.thinking}
+          </Text>
         </Box>
       );
     },
-    [showAllThinking, expandedThinking, theme]
+    [theme]
   );
 
   // Render a message
@@ -582,6 +866,19 @@ export const EnhancedApp: React.FC<{
 
             {/* Message content with markdown */}
             <MarkdownRenderer content={msg.content} />
+
+            {/* Tool calls for this message */}
+            {!isUser && msg.toolCalls && msg.toolCalls.length > 0 && (
+              <Box flexDirection="column" marginTop={1}>
+                {msg.toolCalls.map((tool, idx) => (
+                  <ToolOutput
+                    key={idx}
+                    toolName={tool.name}
+                    output={tool.result || ""}
+                  />
+                ))}
+              </Box>
+            )}
           </Box>
         </Box>
       );
@@ -613,20 +910,6 @@ export const EnhancedApp: React.FC<{
   const renderStreamingContent = () => {
     if (!isStreaming && !currentContent) return null;
 
-    // Calculate thinking shimmer
-    const thinkingOpacity =
-      currentThinkingIntensity > 0
-        ? (Math.sin(time / 2000) + 1) / 2
-        : 0;
-
-    let thinkingColor = theme.colors.inactive;
-    if (thinkingOpacity > 0) {
-      const fromRGB = { r: 153, g: 153, b: 153 };
-      const toRGB = { r: 193, g: 193, b: 193 };
-      const interpolated = interpolateColor(fromRGB, toRGB, thinkingOpacity);
-      thinkingColor = toRGBColor(interpolated);
-    }
-
     return (
       <Box flexDirection="column" marginBottom={2}>
         {/* Role indicator */}
@@ -634,89 +917,58 @@ export const EnhancedApp: React.FC<{
           <Text bold color={theme.colors.claude}>○</Text>
           <Text color={theme.colors.inactive}> </Text>
           <Text bold color={theme.colors.inactive}>Axiom</Text>
-          <Text color={theme.colors.inactive}> </Text>
-          {isStreaming ? (
-            <Text dimColor color={theme.colors.inactive}>
-              {currentToolCall ? "Using tools..." : "Thinking..."}
-            </Text>
-          ) : (
-            ""
-          )}
         </Box>
 
         <Box paddingLeft={2} flexDirection="column">
-          {/* Thinking with shimmer */}
-          {currentThinking && (
-            <Box
-              flexDirection="column"
-              marginBottom={1}
-              borderStyle="round"
-              borderColor={theme.colors.inactive}
-              paddingX={1}
-            >
-              <Box flexDirection="row" alignItems="center">
-                <Text color={theme.colors.secondary}>◉</Text>
-                <Text color={theme.colors.inactive}> Reasoning</Text>
-                <Text color={thinkingColor}> ●</Text>
-              </Box>
-              <Box paddingLeft={2} marginTop={1}>
-                <Text color={theme.colors.inactive} italic>
-                  {currentThinking}
-                </Text>
-              </Box>
-            </Box>
-          )}
-
-          {/* Content with glimmer effect */}
+          {/* Content with simple cursor */}
           <Box flexDirection="row" flexWrap="wrap" alignItems="center">
             <Text color={theme.colors.text}>
               {currentContent}
             </Text>
             {isStreaming && (
-              <Text color={theme.colors.claude}> █</Text>
+              <Text color={theme.colors.claude}>▌</Text>
             )}
           </Box>
+
+          {/* Current tool output inline */}
+          {currentToolCall && (
+            <Box marginTop={1}>
+              <ToolOutput
+                toolName={currentToolCall.name}
+                command={currentToolCall.args?.command || currentToolCall.args?.path || JSON.stringify(currentToolCall.args)}
+                output={currentToolCall.result || ""}
+                isRunning={currentToolCall.status === "running"}
+              />
+            </Box>
+          )}
         </Box>
       </Box>
     );
   };
 
-  // Render spinner row (OpenClaude style)
+  // Render single spinner row
   const renderSpinnerRow = () => {
     if (!isStreaming) return null;
 
-    const verb = currentToolCall ? "Using tools" : "Thinking";
     const elapsed = formatDuration(elapsedMs);
-    const tokens = Math.round(totalTokens / 4);
+    const message = currentThinking
+      ? `thinking (${Math.round(elapsedMs / 1000)}s)`
+      : "Thinking...";
 
     return (
-      <Box marginTop={1}>
-        <EnhancedSpinnerRow
-          message={verb}
-          mode={currentToolCall ? "tool-use" : "thinking"}
-          isStreaming={true}
-          tokens={totalTokens}
-          elapsed={elapsed}
-          thinkingText={
-            currentThinking ? `thinking (${Math.round(time / 1000)}s)` : undefined
-          }
-          thinkingIntensity={thinkingOpacity}
-          stalledIntensity={stalledIntensity}
-          reducedMotion={reducedMotion}
-        />
+      <Box>
+        <Text dimColor color={theme.colors.inactive}>
+          {message}
+        </Text>
       </Box>
     );
   };
 
-  // Render tool chain
+  // Render tool chain - now shown inline in streaming content
   const renderToolChain = () => {
-    if (toolCalls.length === 0) return null;
-
-    return (
-      <Box marginTop={1}>
-        <ToolChain tools={toolCalls} />
-      </Box>
-    );
+    // Tool outputs are now shown inline in renderStreamingContent
+    // This function kept for compatibility but returns null
+    return null;
   };
 
   // Get all commands with subcommands flattened
@@ -913,14 +1165,34 @@ export const EnhancedApp: React.FC<{
         if (valueRef.current.trim()) {
           // Check if it's a command
           if (valueRef.current.startsWith("/")) {
-            const cmd = filteredCommands.find(
-              (c) => c.name === valueRef.current
-            );
-            if (cmd) {
-              cmd.action();
+            // Parse command and args
+            const parts = valueRef.current.trim().split(/\s+/);
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1);
+
+            // Check for session commands first
+            if (handleSessionCommand(cmd, args, setMessages)) {
               setValue("");
               setPaletteSearch("");
-              setShowPalette(false);
+              return;
+            }
+
+            // Check for memory commands
+            if (handleMemoryCommand(cmd, args, setMessages)) {
+              setValue("");
+              setPaletteSearch("");
+              return;
+            }
+
+            // Then check palette commands
+            const allCmds = getAllCommands();
+            const matchedCmd = allCmds.find(
+              (c) => c.name.toLowerCase() === valueRef.current.toLowerCase()
+            );
+            if (matchedCmd) {
+              matchedCmd.action();
+              setValue("");
+              setPaletteSearch("");
               return;
             }
           }
@@ -981,9 +1253,6 @@ export const EnhancedApp: React.FC<{
     );
   };
 
-  // Thinking shimmer opacity calculation
-  const thinkingOpacity = currentThinking ? (Math.sin(time / 2000) + 1) / 2 : 0;
-
   return (
     <Box flexDirection="column" height="100%">
       {/* Header */}
@@ -999,17 +1268,6 @@ export const EnhancedApp: React.FC<{
           <Text dimColor color={theme.colors.subtle}>
             [/] commands
           </Text>
-          <Text dimColor color={theme.colors.subtle}>
-            [Tab] reasoning
-          </Text>
-          <Text dimColor color={theme.colors.subtle}>
-            [Ctrl+V] vim
-          </Text>
-          {reducedMotion && (
-            <Text dimColor color={theme.colors.warning}>
-              [motion]
-            </Text>
-          )}
         </Box>
       </Box>
 
@@ -1048,15 +1306,7 @@ export const EnhancedApp: React.FC<{
 
       {/* Input */}
       <Box marginTop={1}>
-        {inputMode === "vim" ? (
-          <VimInput
-            onSubmit={handleSubmit}
-            placeholder="Message Axiom..."
-            initialValue={inputValue}
-          />
-        ) : (
-          <SimpleInput />
-        )}
+        <SimpleInput />
       </Box>
     </Box>
   );

@@ -9,7 +9,7 @@
     "axiom": "./dist/main.js"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json && cp -r src/storage/migrations dist/storage/",
     "check": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
@@ -18,9 +18,14 @@
     "@axiom/tui": "workspace:*",
     "@axiom/tui-react": "workspace:*",
     "@sinclair/typebox": "^0.32.0",
-    "ink-image": "^2.0.0"
+    "ajv": "^8.20.0",
+    "better-sqlite3": "^11.0.0",
+    "ink-image": "^2.0.0",
+    "tiktoken": "^1.0.22",
+    "ulid": "^2.3.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "typescript": "^5.3.3"

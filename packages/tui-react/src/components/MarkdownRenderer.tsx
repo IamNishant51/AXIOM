@@ -137,27 +137,11 @@ function parseInline(text: string): React.ReactNode {
 	let keyIndex = 0;
 
 	while (remaining.length > 0) {
-		// Inline code (must check before bold to handle `**` etc)
-		const codeMatch = remaining.match(/`([^`]+)`/);
-		if (codeMatch && (codeMatch.index ?? 0) === 0) {
-			parts.push(
-				<Text key={keyIndex++} color={COLORS.accent}>
-					{codeMatch[1]}
-				</Text>
-			);
-			remaining = remaining.slice(codeMatch.index! + codeMatch[0].length);
-			continue;
-		}
-
-		// Bold (**text** or __text__)
+		// Bold (**text**) - must check before single *
 		const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
-		const boldMatchAlt = remaining.match(/__([^_]+)__/);
-		const bold = boldMatch && (!boldMatchAlt || (boldMatch.index ?? 0) < (boldMatchAlt.index ?? Infinity))
-			? boldMatch
-			: boldMatchAlt;
-		if (bold && (bold.index ?? 0) === 0) {
-			parts.push(<Text key={keyIndex++} bold>{bold[1]}</Text>);
-			remaining = remaining.slice(bold.index! + bold[0].length);
+		if (boldMatch && (boldMatch.index ?? 0) === 0) {
+			parts.push(<Text key={keyIndex++} bold>{boldMatch[1]}</Text>);
+			remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
 			continue;
 		}
 
@@ -173,11 +157,23 @@ function parseInline(text: string): React.ReactNode {
 			continue;
 		}
 
+		// Inline code (must check before other patterns)
+		const codeMatch = remaining.match(/`([^`]+)`/);
+		if (codeMatch && (codeMatch.index ?? 0) === 0) {
+			parts.push(
+				<Text key={keyIndex++} color={COLORS.accent}>
+					{codeMatch[1]}
+				</Text>
+			);
+			remaining = remaining.slice(codeMatch.index! + codeMatch[0].length);
+			continue;
+		}
+
 		// Strikethrough
 		const strikeMatch = remaining.match(/~~([^~]+)~~/);
 		if (strikeMatch && (strikeMatch.index ?? 0) === 0) {
 			parts.push(
-				<Text key={keyIndex++} color={COLORS.textMuted} strikethrough>
+				<Text key={keyIndex++} dimColor strikethrough>
 					{strikeMatch[1]}
 				</Text>
 			);
