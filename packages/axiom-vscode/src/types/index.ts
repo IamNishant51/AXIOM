@@ -41,7 +41,7 @@ export interface AxiomSettings {
   showThinking: boolean;
   autoPreview: boolean;
   workspacePath: string;
-  apiProvider: 'opencode' | 'anthropic' | 'openai' | 'google';
+  apiProvider: 'opencode' | 'anthropic' | 'openai' | 'google' | 'groq';
   model: string;
   maxTokens: number;
 }

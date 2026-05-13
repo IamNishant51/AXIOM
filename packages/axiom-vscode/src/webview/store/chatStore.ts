@@ -17,6 +17,7 @@ interface ChatState {
   endToolCall: (id: string, result: string, error?: string) => void;
   clearMessages: () => void;
   setStreaming: (streaming: boolean) => void;
+  finalizeMessage: () => void;
   reset: () => void;
 }
 
@@ -90,6 +91,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setStreaming: (streaming) =>
     set({ isStreaming: streaming }),
 
+  finalizeMessage: () =>
+    set((state) => {
+      if (!state.currentContent && !state.currentThinking && !state.currentToolCall) return state;
+      return {
+        messages: [...state.messages, {
+          id: `msg-${Date.now()}`,
+          role: 'assistant',
+          content: state.currentContent,
+          thinking: state.currentThinking,
+          timestamp: Date.now(),
+        }],
+        currentContent: '',
+        currentThinking: '',
+      };
+    }),
   reset: () =>
     set({
       messages: [],

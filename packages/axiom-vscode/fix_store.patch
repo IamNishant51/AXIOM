@@ -1,0 +1,24 @@
+--- src/webview/store/chatStore.ts
++++ src/webview/store/chatStore.ts
+@@ -69,6 +69,21 @@
+   setStreaming: (streaming) =>
+     set({ isStreaming: streaming }),
+ 
++  finalizeMessage: () =>
++    set((state) => {
++      if (!state.currentContent && !state.currentThinking && !state.currentToolCall) return state;
++      return {
++        messages: [...state.messages, {
++          id: `msg-${Date.now()}`,
++          role: 'assistant',
++          content: state.currentContent,
++          thinking: state.currentThinking,
++          timestamp: Date.now(),
++        }],
++        currentContent: '',
++        currentThinking: '',
++      };
++    }),
++
+   reset: () =>
+     set({

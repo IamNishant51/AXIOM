@@ -1,0 +1,24 @@
+--- src/webview/App.tsx
++++ src/webview/App.tsx
+@@ -10,7 +10,7 @@
+ 
+ export function App() {
+   const { mode, setMode, updateSettings } = useSettingsStore();
+-  const { appendToken, setThinking, setStreaming, startToolCall, endToolCall, clearMessages, addMessage } = useChatStore();
++  const { appendToken, setThinking, setStreaming, startToolCall, endToolCall, clearMessages, addMessage, finalizeMessage } = useChatStore();
+   const { setFiles, setPreviewPort } = useBuildStore();
+ 
+   // Handle messages from VS Code extension
+@@ -39,10 +39,12 @@
+ 
+       case 'done':
+         setStreaming(false);
++        finalizeMessage();
+         break;
+ 
+       case 'cancelled':
+         setStreaming(false);
++        finalizeMessage();
+         break;
+ 
+       case 'settings_update':

@@ -1,10 +1,35 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Loader2, X } from 'lucide-react';
+import { Search, Bot, Code, Bug, Edit3, Lightbulb } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { MessageList } from './MessageList';
 import { InputArea } from './InputArea';
 import { ActivityIndicator } from '../Shared/ActivityIndicator';
 import { useChatStore } from '../../store/chatStore';
+import ReactMarkdown from 'react-markdown';
+
+const markdownComponents = {
+  ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+    <ul className="list-disc ml-5 space-y-1" {...props}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+    <ol className="list-decimal ml-5 space-y-1" {...props}>
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+    <li className="leading-relaxed" {...props}>
+      {children}
+    </li>
+  ),
+  code: ({ children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+    <code className="px-1 py-0.5 rounded bg-axiom-bg-tertiary text-axiom-text" {...props}>
+      {children}
+    </code>
+  ),
+};
 
 interface ChatViewProps {
   onSubmit: (text: string) => void;
@@ -15,7 +40,6 @@ export function ChatView({ onSubmit, onCancel }: ChatViewProps) {
   const { messages, isStreaming, currentContent, currentThinking, currentToolCall } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, currentContent, currentThinking]);
@@ -39,7 +63,6 @@ export function ChatView({ onSubmit, onCancel }: ChatViewProps) {
           <MessageList messages={messages} />
         )}
 
-        {/* Streaming content */}
         <AnimatePresence>
           {isStreaming && (
             <motion.div
@@ -80,11 +103,12 @@ export function ChatView({ onSubmit, onCancel }: ChatViewProps) {
 }
 
 function WelcomeState() {
+  const logoUrl = '/AXIOM-LOGO.png';
   const features = [
-    { icon: '💬', text: 'Chat about code, concepts, or questions' },
-    { icon: '🔍', text: 'Search and understand large codebases' },
-    { icon: '✏️', text: 'Write, edit, and refactor code' },
-    { icon: '🐛', text: 'Debug and fix issues' },
+    { icon: MessageSquare, text: 'Chat about code, concepts, or questions' },
+    { icon: Search, text: 'Search and understand large codebases' },
+    { icon: Edit3, text: 'Write, edit, and refactor code' },
+    { icon: Bug, text: 'Debug and fix issues' },
   ];
 
   return (
@@ -98,15 +122,19 @@ function WelcomeState() {
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-        className="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-axiom-accent-blue to-axiom-accent-purple flex items-center justify-center text-3xl"
+        className="w-16 h-16 mb-6 rounded-2xl bg-axiom-bg-tertiary border border-axiom-border flex items-center justify-center shadow-sm"
       >
-        ✨
+        <img
+          src={logoUrl}
+          alt="Axiom"
+          className="w-12 h-12 rounded-xl"
+        />
       </motion.div>
 
-      <h2 className="text-xl font-semibold text-axiom-text-primary mb-2">
+      <h2 className="text-xl font-semibold text-axiom-text mb-2">
         Welcome to Axiom
       </h2>
-      <p className="text-axiom-text-secondary mb-8 max-w-md">
+      <p className="text-axiom-text-muted mb-8 max-w-md">
         Your AI coding assistant. Ask me anything about your code or let me help you build something amazing.
       </p>
 
@@ -119,14 +147,14 @@ function WelcomeState() {
             transition={{ delay: 0.2 + i * 0.1 }}
             className="flex items-center gap-3 p-3 bg-axiom-bg-secondary rounded-lg border border-axiom-border"
           >
-            <span className="text-xl">{feature.icon}</span>
-            <span className="text-sm text-axiom-text-secondary">{feature.text}</span>
+            <feature.icon className="w-5 h-5 text-axiom-primary" />
+            <span className="text-sm text-axiom-text-muted">{feature.text}</span>
           </motion.div>
         ))}
       </div>
 
-      <p className="mt-8 text-xs text-axiom-text-muted">
-        Press <kbd className="px-1.5 py-0.5 bg-axiom-bg-tertiary rounded mx-1">Ctrl+Shift+A</kbd> to open sidebar anytime
+      <p className="mt-8 text-xs text-axiom-text-dim">
+        Press <kbd className="px-1.5 py-0.5 bg-axiom-bg-tertiary rounded mx-1 text-axiom-text-muted">Ctrl+Shift+A</kbd> to open sidebar anytime
       </p>
     </motion.div>
   );
@@ -142,6 +170,10 @@ interface MessageBubbleProps {
 
 function MessageBubble({ role, content, thinking, toolCall, isStreaming }: MessageBubbleProps) {
   const isUser = role === 'user';
+  const markdownClassName = useMemo(() => {
+    return `whitespace-pre-wrap ${isUser ? '' : 'text-axiom-text'}`;
+  }, [isUser]);
+  const showTyping = isStreaming && !content && !thinking;
 
   return (
     <motion.div
@@ -153,32 +185,39 @@ function MessageBubble({ role, content, thinking, toolCall, isStreaming }: Messa
         className={`
           max-w-[85%] rounded-2xl px-4 py-3
           ${isUser
-            ? 'bg-axiom-accent-blue text-white'
+            ? 'bg-axiom-primary text-axiom-text-inverse'
             : 'bg-axiom-bg-secondary border border-axiom-border'
           }
         `}
       >
-        {/* Thinking block */}
         {thinking && !isUser && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="mb-3 p-3 bg-axiom-accent-purple/10 rounded-lg border-l-2 border-axiom-accent-purple"
-          >
-            <div className="text-xs font-medium text-axiom-accent-purple mb-1">Reasoning</div>
-            <div className="text-sm text-axiom-text-secondary whitespace-pre-wrap">
+          <details className="mb-3 rounded-lg border border-axiom-border bg-axiom-secondary/10">
+            <summary className="cursor-pointer select-none text-xs font-medium text-axiom-secondary px-3 py-2">
+              Reasoning
+            </summary>
+            <div className="px-3 pb-3 text-sm text-axiom-text-muted whitespace-pre-wrap">
               {thinking}
             </div>
-          </motion.div>
+          </details>
         )}
 
-        {/* Content */}
-        <div className={`whitespace-pre-wrap ${isUser ? '' : 'text-axiom-text-primary'}`}>
-          {content}
-          {isStreaming && <span className="cursor ml-1" />}
-        </div>
+        {showTyping ? (
+          <div className="flex items-center gap-2 text-axiom-text-muted">
+            <span className="inline-flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-axiom-text-muted animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-axiom-text-muted animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-axiom-text-muted animate-pulse" />
+            </span>
+            <span className="text-xs">Thinking...</span>
+          </div>
+        ) : (
+          <ReactMarkdown className={markdownClassName} components={markdownComponents}>
+            {content}
+          </ReactMarkdown>
+        )}
 
-        {/* Tool call */}
+        {isStreaming && !showTyping && <span className="cursor ml-1 bg-axiom-cursor" />}
+
         {toolCall && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -187,22 +226,22 @@ function MessageBubble({ role, content, thinking, toolCall, isStreaming }: Messa
           >
             <div className="flex items-center gap-2 text-sm">
               <span className={
-                toolCall.status === 'running' ? 'text-axiom-accent-orange' :
-                toolCall.status === 'error' ? 'text-axiom-accent-red' :
-                'text-axiom-accent-green'
+                toolCall.status === 'running' ? 'text-axiom-warning' :
+                toolCall.status === 'error' ? 'text-axiom-error' :
+                'text-axiom-success'
               }>
-                {toolCall.status === 'running' ? '⚡' : toolCall.status === 'error' ? '✕' : '✓'}
+                {toolCall.status === 'running' ? '...' : toolCall.status === 'error' ? 'x' : 'o'}
               </span>
-              <span className="font-medium text-axiom-accent-cyan">{toolCall.name}</span>
+              <span className="font-medium text-axiom-secondary">{toolCall.name}</span>
             </div>
             {toolCall.result && (
-              <pre className="mt-2 text-xs text-axiom-text-muted whitespace-pre-wrap overflow-x-auto">
+              <pre className="mt-2 text-xs text-axiom-text-dim whitespace-pre-wrap overflow-x-auto">
                 {toolCall.result.slice(0, 200)}
                 {toolCall.result.length > 200 && '...'}
               </pre>
             )}
             {toolCall.error && (
-              <div className="mt-2 text-xs text-axiom-accent-red">
+              <div className="mt-2 text-xs text-axiom-error">
                 {toolCall.error}
               </div>
             )}

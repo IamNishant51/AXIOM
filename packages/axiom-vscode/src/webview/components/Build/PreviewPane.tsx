@@ -1,6 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Monitor, Smartphone, RotateCcw } from 'lucide-react';
+import { Monitor, Smartphone, RotateCcw, MonitorOff } from 'lucide-react';
 import { useBuildStore } from '../../store/buildStore';
 
 export function PreviewPane() {
@@ -20,8 +20,8 @@ export function PreviewPane() {
             className={`
               p-1.5 rounded-md transition-colors cursor-pointer
               ${viewMode === 'desktop'
-                ? 'bg-axiom-bg-tertiary text-axiom-text-primary'
-                : 'text-axiom-text-muted hover:text-axiom-text-secondary'
+                ? 'bg-axiom-bg-tertiary text-axiom-text'
+                : 'text-axiom-text-dim hover:text-axiom-text-muted'
               }
             `}
             title="Desktop view"
@@ -33,8 +33,8 @@ export function PreviewPane() {
             className={`
               p-1.5 rounded-md transition-colors cursor-pointer
               ${viewMode === 'mobile'
-                ? 'bg-axiom-bg-tertiary text-axiom-text-primary'
-                : 'text-axiom-text-muted hover:text-axiom-text-secondary'
+                ? 'bg-axiom-bg-tertiary text-axiom-text'
+                : 'text-axiom-text-dim hover:text-axiom-text-muted'
               }
             `}
             title="Mobile view"
@@ -45,7 +45,7 @@ export function PreviewPane() {
 
         <button
           onClick={() => iframeRef.current?.contentWindow?.location.reload()}
-          className="p-1.5 rounded-md text-axiom-text-muted hover:text-axiom-text-primary hover:bg-axiom-bg-tertiary transition-colors cursor-pointer"
+          className="p-1.5 rounded-md text-axiom-text-dim hover:text-axiom-text hover:bg-axiom-bg-tertiary transition-colors cursor-pointer"
           title="Reload iframe"
         >
           <RotateCcw className="w-4 h-4" />
@@ -89,25 +89,13 @@ function EmptyPreview() {
         transition={{ type: 'spring', stiffness: 200 }}
         className="w-20 h-20 mb-6 rounded-2xl bg-axiom-bg-secondary flex items-center justify-center"
       >
-        <svg
-          className="w-10 h-10 text-axiom-text-muted"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-          />
-        </svg>
+        <MonitorOff className="w-10 h-10 text-axiom-text-dim" />
       </motion.div>
 
-      <h3 className="text-lg font-semibold text-axiom-text-primary mb-2">
+      <h3 className="text-lg font-semibold text-axiom-text mb-2">
         No Preview Available
       </h3>
-      <p className="text-axiom-text-secondary max-w-md">
+      <p className="text-axiom-text-muted max-w-md">
         Ask Axiom to create an HTML file or build a web application to see it here.
       </p>
     </motion.div>

@@ -1,0 +1,102 @@
+import { create } from 'zustand';
+import type { Message, ToolCall } from '../../types';
+
+interface ChatState {
+  messages: Message[];
+  isStreaming: boolean;
+  currentThinking: string;
+  currentContent: string;
+  currentToolCall: ToolCall | null;
+
+  // Actions
+  addMessage: (message: Message) => void;
+  updateMessage: (id: string, updates: Partial<Message>) => void;
+  appendToken: (token: string) => void;
+  setThinking: (thinking: string) => void;
+  startToolCall: (tool: ToolCall) => void;
+  endToolCall: (id: string, result: string, error?: string) => void;
+  clearMessages: () => void;
+  setStreaming: (streaming: boolean) => void;
+  finalizeMessage: () => void;
+  reset: () => void;
+}
+
+export const useChatStore = create<ChatState>((set, get) => ({
+  messages: [],
+  isStreaming: false,
+  currentThinking: '',
+  currentContent: '',
+  currentToolCall: null,
+
+  addMessage: (message) =>
+    set((state) => ({
+      messages: [...state.messages, message],
+    })),
+
+  updateMessage: (id, updates) =>
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg.id === id ? { ...msg, ...updates } : msg
+      ),
+    })),
+
+  appendToken: (token) =>
+    set((state) => ({
+      currentContent: state.currentContent + token,
+    })),
+
+  setThinking: (thinking) =>
+    set({ currentThinking: thinking }),
+
+  startToolCall: (tool) =>
+    set((state) => ({
+      currentToolCall: tool,
+      messages: [
+        ...state.messages,
+        {
+          id: `msg-${Date.now()}`,
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+          toolCalls: [tool],
+        },
+      ],
+    })),
+
+  endToolCall: (id, result, error) =>
+    set((state) => {
+      const messages = [...state.messages];
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && lastMessage.toolCalls) {
+        lastMessage.toolCalls = lastMessage.toolCalls.map((tc) =>
+          tc.id === id
+            ? { ...tc, status: error ? 'error' : 'done', result, error }
+            : tc
+        );
+      }
+      return {
+        messages,
+        currentToolCall: null,
+      };
+    }),
+
+  clearMessages: () =>
+    set({
+      messages: [],
+      currentThinking: '',
+      currentContent: '',
+      currentToolCall: null,
+    }),
+
+  setStreaming: (streaming) =>
+    set({ isStreaming: streaming }),
+
+  reset: () =>
+    set({
+      messages: [],
+      isStreaming: false,
+      currentThinking: '',
+      currentContent: '',
+      currentToolCall: null,
+    }),
+}));

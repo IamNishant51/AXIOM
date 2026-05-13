@@ -4,8 +4,13 @@
   "description": "AI-powered coding assistant with live preview and file streaming",
   "version": "1.0.0",
   "publisher": "axiom",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/axiom-mono"
   },
   "categories": [
     "Programming Languages",
@@ -31,13 +36,13 @@
         "command": "axiom.start",
         "title": "Axiom: Start Chat",
         "category": "Axiom",
-        "icon": "$(copilot)"
+        "icon": "$(hubot)"
       },
       {
         "command": "axiom.toggleSidebar",
         "title": "Axiom: Toggle Sidebar",
         "category": "Axiom",
-        "icon": "$(copilot)"
+        "icon": "$(hubot)"
       },
       {
         "command": "axiom.clearChat",
@@ -69,7 +74,7 @@
         {
           "id": "axiom.sidebar.viewContainer",
           "title": "Axiom",
-          "icon": "$(copilot)"
+          "icon": "assets/cat-icon.svg"
         }
       ]
     },
@@ -122,7 +127,8 @@
             "opencode",
             "anthropic",
             "openai",
-            "google"
+            "google",
+            "groq"
           ],
           "description": "AI API provider"
         },
@@ -176,7 +182,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/react-syntax-highlighter": "^15.5.11",
-    "@types/vscode": "^1.118.0",
+    "@types/vscode": "^1.85.0",
     "@vitejs/plugin-react": "^4.2.1",
     "@vscode/test-web": "^0.0.50",
     "autoprefixer": "^10.4.17",

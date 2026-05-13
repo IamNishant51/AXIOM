@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Brain, Sparkles, Zap, Circle, AlertTriangle } from 'lucide-react';
 import type { ActivityKind } from '../../../types';
 
 interface ActivityIndicatorProps {
@@ -14,39 +15,40 @@ interface ActivityIndicatorProps {
 
 const ACTIVITY_CONFIG = {
   thinking: {
-    icon: '◯',
+    icon: Brain,
     label: 'Thinking',
-    color: 'text-axiom-accent-cyan',
-    bgColor: 'bg-axiom-accent-cyan/10',
+    color: 'text-axiom-secondary',
+    bgColor: 'bg-axiom-secondary/10',
   },
   generating: {
-    icon: '◉',
+    icon: Sparkles,
     label: 'Generating',
-    color: 'text-axiom-accent-green',
-    bgColor: 'bg-axiom-accent-green/10',
+    color: 'text-axiom-success',
+    bgColor: 'bg-axiom-success/10',
   },
   tool: {
-    icon: '⚡',
+    icon: Zap,
     label: 'Executing',
-    color: 'text-axiom-accent-orange',
-    bgColor: 'bg-axiom-accent-orange/10',
+    color: 'text-axiom-warning',
+    bgColor: 'bg-axiom-warning/10',
   },
   idle: {
-    icon: '○',
+    icon: Circle,
     label: 'Ready',
-    color: 'text-axiom-text-muted',
+    color: 'text-axiom-text-dim',
     bgColor: 'bg-axiom-bg-tertiary',
   },
   error: {
-    icon: '⚠',
+    icon: AlertTriangle,
     label: 'Error',
-    color: 'text-axiom-accent-red',
-    bgColor: 'bg-axiom-accent-red/10',
+    color: 'text-axiom-error',
+    bgColor: 'bg-axiom-error/10',
   },
 };
 
 export function ActivityIndicator({ activity, compact = false }: ActivityIndicatorProps) {
   const config = ACTIVITY_CONFIG[activity.kind];
+  const Icon = config.icon;
 
   if (compact) {
     return (
@@ -54,9 +56,8 @@ export function ActivityIndicator({ activity, compact = false }: ActivityIndicat
         <motion.span
           animate={{ opacity: activity.kind === 'generating' ? [1, 0.5, 1] : 1 }}
           transition={{ duration: 0.8, repeat: Infinity }}
-          className="text-sm"
         >
-          {config.icon}
+          <Icon className="w-4 h-4" />
         </motion.span>
         <span className="text-sm">{config.label}</span>
         {activity.tool && <span className="text-xs opacity-70">- {activity.tool}</span>}
@@ -80,9 +81,8 @@ export function ActivityIndicator({ activity, compact = false }: ActivityIndicat
           opacity: activity.kind === 'generating' ? [1, 0.7, 1] : 1,
         }}
         transition={{ duration: 1, repeat: Infinity }}
-        className="text-sm"
       >
-        {config.icon}
+        <Icon className="w-4 h-4" />
       </motion.span>
       <span className="text-sm font-medium">{config.label}</span>
       {activity.tool && (

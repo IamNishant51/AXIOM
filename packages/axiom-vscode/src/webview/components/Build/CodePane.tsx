@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Code2, FileText } from 'lucide-react';
+import { Code2, FileCode } from 'lucide-react';
 import { useChatStore } from '../../store/chatStore';
 
 export function CodePane() {
@@ -16,9 +16,9 @@ export function CodePane() {
           animate={{ opacity: 1 }}
           className="flex-1 overflow-auto p-4"
         >
-          <pre className="font-mono text-sm text-axiom-text-primary whitespace-pre-wrap">
+          <pre className="font-mono text-sm text-axiom-text whitespace-pre-wrap">
             {currentContent}
-            {isStreaming && <span className="cursor" />}
+            {isStreaming && <span className="cursor ml-1 bg-axiom-cursor" />}
           </pre>
         </motion.div>
       ) : (
@@ -41,18 +41,18 @@ function EmptyCode() {
         transition={{ type: 'spring', stiffness: 200 }}
         className="w-16 h-16 mb-4 rounded-xl bg-axiom-bg-secondary flex items-center justify-center"
       >
-        <Code2 className="w-8 h-8 text-axiom-text-muted" />
+        <Code2 className="w-8 h-8 text-axiom-text-dim" />
       </motion.div>
 
-      <h3 className="text-lg font-semibold text-axiom-text-primary mb-2">
+      <h3 className="text-lg font-semibold text-axiom-text mb-2">
         Code Streaming Area
       </h3>
-      <p className="text-axiom-text-secondary max-w-md">
+      <p className="text-axiom-text-muted max-w-md">
         Code will appear here as Axiom writes files. Switch to Build mode and ask Axiom to create something.
       </p>
 
-      <div className="mt-6 flex items-center gap-2 text-xs text-axiom-text-muted">
-        <FileText className="w-4 h-4" />
+      <div className="mt-6 flex items-center gap-2 text-xs text-axiom-text-dim">
+        <FileCode className="w-4 h-4" />
         <span>Start building to see live code</span>
       </div>
     </motion.div>

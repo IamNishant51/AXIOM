@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Code, Folder, RefreshCw, ExternalLink } from 'lucide-react';
+import { Eye, Code, FolderOpen, RefreshCw, ExternalLink } from 'lucide-react';
 import { PreviewPane } from './PreviewPane';
 import { CodePane } from './CodePane';
 import { FileTree } from './FileTree';
@@ -15,7 +15,7 @@ export function BuildView() {
   const tabs = [
     { id: 'preview' as const, label: 'Preview', icon: Eye },
     { id: 'code' as const, label: 'Code', icon: Code },
-    { id: 'files' as const, label: 'Files', icon: Folder },
+    { id: 'files' as const, label: 'Files', icon: FolderOpen },
   ];
 
   const handleOpenPreview = () => {
@@ -35,8 +35,8 @@ export function BuildView() {
                 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
                 transition-colors cursor-pointer
                 ${activeTab === tab.id
-                  ? 'bg-axiom-bg-tertiary text-axiom-text-primary'
-                  : 'text-axiom-text-muted hover:text-axiom-text-secondary hover:bg-axiom-bg-tertiary/50'
+                  ? 'bg-axiom-bg-tertiary text-axiom-text'
+                  : 'text-axiom-text-dim hover:text-axiom-text-muted hover:bg-axiom-bg-tertiary/50'
                 }
               `}
             >
@@ -52,19 +52,19 @@ export function BuildView() {
           )}
           {activeTab === 'preview' && (
             <>
-              <span className="text-xs text-axiom-text-muted">
+              <span className="text-xs text-axiom-text-dim">
                 http://localhost:{previewPort}/
               </span>
               <button
                 onClick={handleOpenPreview}
-                className="p-1.5 rounded-md text-axiom-text-muted hover:text-axiom-text-primary hover:bg-axiom-bg-tertiary transition-colors cursor-pointer"
+                className="p-1.5 rounded-md text-axiom-text-dim hover:text-axiom-text hover:bg-axiom-bg-tertiary transition-colors cursor-pointer"
                 title="Open in browser"
               >
                 <ExternalLink className="w-4 h-4" />
               </button>
               <button
                 onClick={() => window.vscode?.postMessage({ type: 'refresh_preview' })}
-                className="p-1.5 rounded-md text-axiom-text-muted hover:text-axiom-text-primary hover:bg-axiom-bg-tertiary transition-colors cursor-pointer"
+                className="p-1.5 rounded-md text-axiom-text-dim hover:text-axiom-text hover:bg-axiom-bg-tertiary transition-colors cursor-pointer"
                 title="Refresh preview"
               >
                 <RefreshCw className="w-4 h-4" />

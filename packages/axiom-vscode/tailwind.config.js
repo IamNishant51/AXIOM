@@ -5,92 +5,67 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        vsc: {
+          sidebar: 'var(--vscode-sideBar-background)',
+          editor: 'var(--vscode-editor-background)',
+          foreground: 'var(--vscode-editor-foreground)',
+          border: 'var(--vscode-widget-border)',
+          input: 'var(--vscode-input-background)',
+          inputFg: 'var(--vscode-input-foreground)',
+          inputBorder: 'var(--vscode-input-border)',
+          button: 'var(--vscode-button-background)',
+          buttonHover: 'var(--vscode-button-hoverBackground)',
+          buttonFg: 'var(--vscode-button-foreground)',
+          selection: 'var(--vscode-editor-inactiveSelectionBackground)',
+          hover: 'var(--vscode-list-hoverBackground)'
+        },
         axiom: {
+          primary: 'var(--vscode-button-background)',
+          primaryHover: 'var(--vscode-button-hoverBackground)',
+          accent: 'var(--vscode-focusBorder)',
+          text: {
+            DEFAULT: 'var(--vscode-editor-foreground)',
+            muted: 'var(--vscode-descriptionForeground)',
+            dim: 'var(--vscode-disabledForeground)',
+            inverse: 'var(--vscode-button-foreground)'
+          },
           bg: {
-            primary: '#0d1117',
-            secondary: '#161b22',
-            tertiary: '#21262d',
-            input: '#0d1117',
+            primary: 'var(--vscode-sideBar-background)',
+            secondary: 'var(--vscode-editor-background)',
+            tertiary: 'var(--vscode-input-background)'
           },
           border: {
-            DEFAULT: '#30363d',
-            active: '#58a6ff',
+            DEFAULT: 'var(--vscode-widget-border)'
           },
-          text: {
-            primary: '#e6edf3',
-            secondary: '#8b949e',
-            muted: '#484f58',
-          },
-          accent: {
-            blue: '#58a6ff',
-            green: '#3fb950',
-            purple: '#a371f7',
-            orange: '#d29922',
-            red: '#f85149',
-            cyan: '#39c5cf',
-          },
-        },
+          success: 'var(--vscode-testing-iconPassed)',
+          warning: 'var(--vscode-editorWarning-foreground)',
+          error: 'var(--vscode-errorForeground)',
+          cursor: 'var(--vscode-editorCursor-foreground)'
+        }
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-      },
-      fontSize: {
-        xs: '11px',
-        sm: '13px',
-        base: '14px',
-        lg: '16px',
-        xl: '18px',
-      },
-      spacing: {
-        1: '4px',
-        2: '8px',
-        3: '12px',
-        4: '16px',
-        5: '20px',
-        6: '24px',
-        8: '32px',
-      },
-      borderRadius: {
-        sm: '4px',
-        md: '6px',
-        lg: '8px',
-        xl: '12px',
-      },
-      animation: {
-        'fade-in': 'fadeIn 0.2s ease-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'scale-in': 'scaleIn 0.2s ease-out',
-        'shimmer': 'shimmer 1.5s infinite',
-        'bounce': 'bounce 1.4s ease-in-out infinite',
-        'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
+        sans: ['"Inter"', 'var(--vscode-font-family)', 'system-ui', 'sans-serif'],
+        mono: ['var(--vscode-editor-font-family)', 'monospace'],
       },
       keyframes: {
+        slideUp: {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' }
+        },
         fadeIn: {
           '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+          '100%': { opacity: '1' }
         },
-        slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(8px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        scaleIn: {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
-        bounce: {
-          '0%, 80%, 100%': { transform: 'translateY(0)' },
-          '40%': { transform: 'translateY(-6px)' },
-        },
-        pulseSubtle: {
+        blink: {
           '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.7' },
-        },
+          '50%': { opacity: '0' }
+        }
       },
+      animation: {
+        slideUp: 'slideUp 0.2s ease-out forwards',
+        fadeIn: 'fadeIn 0.15s ease-out forwards',
+        blink: 'blink 1s step-end infinite'
+      }
     },
   },
   plugins: [],

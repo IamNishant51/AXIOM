@@ -9,11 +9,6 @@ interface ModeToggleProps {
 }
 
 export function ModeToggle({ activeMode, onModeChange }: ModeToggleProps) {
-  const modes: { id: AgentMode; label: string; icon: React.ReactNode }[] = [
-    { id: 'chat', label: 'Chat', icon: <MessageSquare className="w-4 h-4" /> },
-    { id: 'build', label: 'Build', icon: <Hammer className="w-4 h-4" /> },
-  ];
-
   return (
     <div className="relative flex items-center p-1 bg-axiom-bg-tertiary rounded-lg">
       {/* Sliding background */}
@@ -27,23 +22,35 @@ export function ModeToggle({ activeMode, onModeChange }: ModeToggleProps) {
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       />
 
-      {modes.map((mode) => (
-        <button
-          key={mode.id}
-          onClick={() => onModeChange(mode.id)}
-          className={`
-            relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
-            transition-colors duration-200 cursor-pointer
-            ${activeMode === mode.id
-              ? 'text-axiom-text-primary'
-              : 'text-axiom-text-muted hover:text-axiom-text-secondary'
-            }
-          `}
-        >
-          {mode.icon}
-          <span className="hidden sm:inline">{mode.label}</span>
-        </button>
-      ))}
+      <button
+        onClick={() => onModeChange('chat')}
+        className={`
+          relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
+          transition-colors duration-200 cursor-pointer
+          ${activeMode === 'chat'
+            ? 'text-axiom-text'
+            : 'text-axiom-text-muted hover:text-axiom-text'
+          }
+        `}
+      >
+        <MessageSquare className="w-4 h-4" />
+        <span className="hidden sm:inline">Chat</span>
+      </button>
+
+      <button
+        onClick={() => onModeChange('build')}
+        className={`
+          relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
+          transition-colors duration-200 cursor-pointer
+          ${activeMode === 'build'
+            ? 'text-axiom-text'
+            : 'text-axiom-text-muted hover:text-axiom-text'
+          }
+        `}
+      >
+        <Hammer className="w-4 h-4" />
+        <span className="hidden sm:inline">Build</span>
+      </button>
     </div>
   );
 }

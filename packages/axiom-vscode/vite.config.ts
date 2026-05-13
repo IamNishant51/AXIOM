@@ -10,7 +10,11 @@ export default defineConfig({
     emptyDirOnly: true,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'src/webview/index.html'),
+        index: path.resolve(__dirname, 'src/webview/main.tsx'),
+      },
+      output: {
+        entryFileNames: 'index.js',
+        assetFileNames: 'index.[ext]',
       },
     },
   },

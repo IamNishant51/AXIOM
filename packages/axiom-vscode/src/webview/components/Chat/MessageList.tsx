@@ -1,6 +1,30 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import type { Message } from '../../../types';
+
+const markdownComponents = {
+  ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+    <ul className="list-disc ml-5 space-y-1" {...props}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+    <ol className="list-decimal ml-5 space-y-1" {...props}>
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+    <li className="leading-relaxed" {...props}>
+      {children}
+    </li>
+  ),
+  code: ({ children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+    <code className="px-1 py-0.5 rounded bg-axiom-bg-tertiary text-axiom-text" {...props}>
+      {children}
+    </code>
+  ),
+};
 
 interface MessageListProps {
   messages: Message[];
@@ -23,6 +47,11 @@ interface MessageItemProps {
 
 function MessageItem({ message, index }: MessageItemProps) {
   const isUser = message.role === 'user';
+  const content = message.content || '';
+
+  const markdownClassName = useMemo(() => {
+    return `whitespace-pre-wrap ${isUser ? '' : 'text-axiom-text'}`;
+  }, [isUser]);
 
   return (
     <motion.div
@@ -35,27 +64,26 @@ function MessageItem({ message, index }: MessageItemProps) {
         className={`
           max-w-[85%] rounded-2xl px-4 py-3
           ${isUser
-            ? 'bg-axiom-accent-blue text-white rounded-br-md'
+            ? 'bg-axiom-primary text-axiom-text-inverse rounded-br-md'
             : 'bg-axiom-bg-secondary border border-axiom-border rounded-bl-md'
           }
         `}
       >
-        {/* Thinking block */}
         {message.thinking && (
-          <div className="mb-3 p-3 bg-axiom-accent-purple/10 rounded-lg border-l-2 border-axiom-accent-purple">
-            <div className="text-xs font-medium text-axiom-accent-purple mb-1">Reasoning</div>
-            <div className="text-sm text-axiom-text-secondary whitespace-pre-wrap">
+          <details className="mb-3 rounded-lg border border-axiom-border bg-axiom-secondary/10">
+            <summary className="cursor-pointer select-none text-xs font-medium text-axiom-secondary px-3 py-2">
+              Reasoning
+            </summary>
+            <div className="px-3 pb-3 text-sm text-axiom-text-muted whitespace-pre-wrap">
               {message.thinking}
             </div>
-          </div>
+          </details>
         )}
 
-        {/* Content */}
-        <div className={`whitespace-pre-wrap ${isUser ? '' : 'text-axiom-text-primary'}`}>
-          {message.content}
-        </div>
+        <ReactMarkdown className={markdownClassName} components={markdownComponents}>
+          {content}
+        </ReactMarkdown>
 
-        {/* Tool calls */}
         {message.toolCalls && message.toolCalls.length > 0 && (
           <div className="mt-3 space-y-2">
             {message.toolCalls.map((tool) => (
@@ -65,22 +93,22 @@ function MessageItem({ message, index }: MessageItemProps) {
               >
                 <div className="flex items-center gap-2 text-sm">
                   <span className={
-                    tool.status === 'running' ? 'text-axiom-accent-orange' :
-                    tool.status === 'error' ? 'text-axiom-accent-red' :
-                    'text-axiom-accent-green'
+                    tool.status === 'running' ? 'text-axiom-warning' :
+                    tool.status === 'error' ? 'text-axiom-error' :
+                    'text-axiom-success'
                   }>
-                    {tool.status === 'running' ? '⚡' : tool.status === 'error' ? '✕' : '✓'}
+                    {tool.status === 'running' ? '...' : tool.status === 'error' ? 'x' : 'o'}
                   </span>
-                  <span className="font-medium text-axiom-accent-cyan">{tool.name}</span>
+                  <span className="font-medium text-axiom-secondary">{tool.name}</span>
                 </div>
                 {tool.result && (
-                  <pre className="mt-2 text-xs text-axiom-text-muted whitespace-pre-wrap overflow-x-auto">
+                  <pre className="mt-2 text-xs text-axiom-text-dim whitespace-pre-wrap overflow-x-auto">
                     {tool.result.slice(0, 300)}
                     {tool.result.length > 300 && '...'}
                   </pre>
                 )}
                 {tool.error && (
-                  <div className="mt-2 text-xs text-axiom-accent-red">
+                  <div className="mt-2 text-xs text-axiom-error">
                     {tool.error}
                   </div>
                 )}
@@ -89,8 +117,7 @@ function MessageItem({ message, index }: MessageItemProps) {
           </div>
         )}
 
-        {/* Timestamp */}
-        <div className={`mt-2 text-xs ${isUser ? 'text-white/50' : 'text-axiom-text-muted'}`}>
+        <div className={`mt-2 text-xs ${isUser ? 'text-white/50' : 'text-axiom-text-dim'}`}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
